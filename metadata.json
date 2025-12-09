@@ -1,0 +1,7 @@
+{
+  "name": "Sistem Pembagian tugas dan jadwal SMPN 3 Pacet",
+  "description": "A comprehensive dashboard for managing and visualizing teacher task distributions, schedules, and workload analysis.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
