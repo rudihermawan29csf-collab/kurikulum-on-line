@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Save, RefreshCw, Shield, Layout, Lock, Plus, Trash2, CalendarX, AlertCircle, Edit2, X, Filter, Calendar, Ban, Users, Upload, Download, FileSpreadsheet } from 'lucide-react';
-import { AppSettings, AuthSettings, TeacherData, TeacherLeave, LeaveType, SettingsPanelProps, CalendarEvent, Student } from '../types';
+import { Save, RefreshCw, Shield, Layout, Lock, Plus, Trash2, CalendarX, AlertCircle, Edit2, X, Filter, Calendar, Ban, Users, Upload, FileSpreadsheet, CheckCircle2, Download } from 'lucide-react';
+import { AppSettings, AuthSettings, TeacherData, TeacherLeave, LeaveType, SettingsPanelProps, Student } from '../types';
 import { CLASSES } from '../constants';
 import HolidayManager from './HolidayManager';
 import * as XLSX from 'xlsx';
@@ -54,6 +54,8 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   // Calendar State
   const [calDate, setCalDate] = useState('');
   const [calDesc, setCalDesc] = useState('');
+  const [isCalendarSaved, setIsCalendarSaved] = useState(false);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
   // Student Management State
   const [studentTabMode, setStudentTabMode] = useState<'MANUAL' | 'UPLOAD'>('MANUAL');
@@ -185,9 +187,28 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const handleAddCalendarEvent = (e: React.FormEvent) => {
     e.preventDefault();
     if (calDate && calDesc && onUpdateCalendar) {
-      onUpdateCalendar([...calendarEvents, { id: Date.now().toString(), date: calDate, description: calDesc }]);
+      if (editingEventId) {
+        // Update
+        const updatedEvents = calendarEvents.map(evt => 
+          evt.id === editingEventId ? { ...evt, date: calDate, description: calDesc } : evt
+        );
+        onUpdateCalendar(updatedEvents);
+        setEditingEventId(null);
+      } else {
+        // Add
+        onUpdateCalendar([...calendarEvents, { id: Date.now().toString(), date: calDate, description: calDesc }]);
+      }
       setCalDate('');
       setCalDesc('');
+    }
+  };
+
+  const handleEditCalendarEvent = (id: string) => {
+    const evt = calendarEvents.find(e => e.id === id);
+    if (evt) {
+      setCalDate(evt.date);
+      setCalDesc(evt.description);
+      setEditingEventId(id);
     }
   };
 
@@ -195,6 +216,15 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
     if (onUpdateCalendar) {
       onUpdateCalendar(calendarEvents.filter(e => e.id !== id));
     }
+  };
+
+  const handleCalendarSaveTrigger = () => {
+    setIsCalendarSaved(true);
+    setTimeout(() => setIsCalendarSaved(false), 3000);
+  };
+
+  const handleSubjectHolidaySave = () => {
+    alert("Pengaturan Libur Mapel berhasil disimpan!");
   };
 
   // --- Student Handlers ---
@@ -278,7 +308,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   };
 
   // Unique Teacher Names
-  const uniqueTeachers = Array.from(new Set(teacherData.map(t => t.name))).sort();
+  const uniqueTeachers = Array.from(new Set(teacherData.map(t => t.name))).sort() as string[];
 
   // Filtered Leaves
   const filteredLeaves = useMemo((): TeacherLeave[] => {
@@ -377,7 +407,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <div className="space-y-6 animate-fade-in">
               <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-xl font-bold text-gray-800">Informasi Aplikasi</h2>
-                <p className="text-sm text-gray-500 mt-1">Ubah header dan periode akademik.</p>
+                <p className="text-sm text-gray-500 mt-1">Ubah header, periode akademik, dan data sekolah.</p>
               </div>
               
               <form onSubmit={handleGeneralSubmit} className="space-y-6">
@@ -393,6 +423,31 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                       className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
                     />
                     <p className="text-xs text-gray-500 mt-1">Masukkan link langsung ke gambar (akhiran .png, .jpg). Jika kosong atau rusak, logo default akan muncul.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Nama Kepala Sekolah</label>
+                      <input
+                        type="text"
+                        name="headmaster"
+                        value={formData.headmaster || ''}
+                        onChange={handleGeneralChange}
+                        placeholder="Contoh: Drs. Budi Santoso, M.Pd"
+                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">NIP Kepala Sekolah</label>
+                      <input
+                        type="text"
+                        name="headmasterNip"
+                        value={formData.headmasterNip || ''}
+                        onChange={handleGeneralChange}
+                        placeholder="Contoh: 196501011990031002"
+                        className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -443,7 +498,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 </div>
 
                 <div className="pt-6 border-t border-gray-100 flex items-center justify-end gap-4">
-                  {isSaved && <span className="text-green-600 font-medium text-sm">Disimpan!</span>}
+                  {isSaved && <span className="text-green-600 font-medium text-sm animate-pulse">Disimpan!</span>}
                   <button type="submit" className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold shadow-md">
                     <Save size={18} className="inline mr-2" /> Simpan Perubahan
                   </button>
@@ -464,604 +519,576 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 
                 {/* 1. Admin Password */}
                 <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                  <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2 mb-4">
-                    <Lock size={16} className="text-red-500" /> Password Admin
+                  <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <Lock size={18} className="text-indigo-600" /> Password Admin
                   </h3>
-                  <div>
+                  <div className="max-w-md">
                     <input 
                       type="text" 
-                      value={authData.adminPassword || '007007Rh'} // Show default if empty
+                      value={authData.adminPassword || ''}
                       onChange={(e) => {
-                        setAuthData({...authData, adminPassword: e.target.value});
-                        setIsAuthSaved(false);
+                         setAuthData(prev => ({ ...prev, adminPassword: e.target.value }));
+                         setIsAuthSaved(false);
                       }}
-                      className="w-full md:w-1/2 border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono"
-                      placeholder="Masukkan password admin baru"
+                      placeholder="Masukkan password admin baru..."
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Default: 007007Rh</p>
+                    <p className="text-xs text-gray-500 mt-2">Kosongkan untuk menggunakan default (007007Rh).</p>
                   </div>
                 </div>
 
                 {/* 2. Teacher Passwords */}
-                <div>
-                  <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2 mb-4">
-                    <Lock size={16} className="text-emerald-500" /> Password Guru
+                <div className="bg-white p-4 rounded-xl border border-gray-200">
+                  <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <Shield size={18} className="text-emerald-600" /> Password Guru
                   </h3>
-                  <div className="border border-gray-200 rounded-xl overflow-hidden">
-                    <div className="max-h-60 overflow-y-auto">
-                      <table className="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead className="bg-gray-100 sticky top-0">
-                          <tr>
-                            <th className="px-4 py-2 text-left font-bold text-gray-600">Nama Guru</th>
-                            <th className="px-4 py-2 text-left font-bold text-gray-600">Password</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200 bg-white">
-                          {uniqueTeachers.map((name, idx) => (
-                            <tr key={idx}>
-                              <td className="px-4 py-2 text-gray-800 font-medium">{name}</td>
-                              <td className="px-4 py-2">
-                                <input 
-                                  type="text" 
-                                  value={authData.teacherPasswords[name] || ''}
-                                  onChange={(e) => handleTeacherPasswordChange(name, e.target.value)}
-                                  placeholder="Belum diatur"
-                                  className="w-full border border-gray-200 rounded px-2 py-1 text-sm focus:border-emerald-500"
-                                />
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                  <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar space-y-2">
+                     {uniqueTeachers.map(teacherName => (
+                       <div key={teacherName} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded border border-gray-100">
+                          <span className="text-sm font-medium text-gray-700">{teacherName}</span>
+                          <input 
+                            type="text" 
+                            value={authData.teacherPasswords[teacherName] || ''}
+                            onChange={(e) => handleTeacherPasswordChange(teacherName, e.target.value)}
+                            placeholder="Password..."
+                            className="w-40 text-sm border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-emerald-500"
+                          />
+                       </div>
+                     ))}
                   </div>
                 </div>
 
                 {/* 3. Class Passwords */}
-                <div>
-                  <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2 mb-4">
-                    <Lock size={16} className="text-orange-500" /> Password Ketua Kelas
+                <div className="bg-white p-4 rounded-xl border border-gray-200">
+                  <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <Shield size={18} className="text-orange-600" /> Password Kelas (Siswa)
                   </h3>
-                  <div className="border border-gray-200 rounded-xl overflow-hidden">
-                    <div className="max-h-60 overflow-y-auto">
-                      <table className="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead className="bg-gray-100 sticky top-0">
-                          <tr>
-                            <th className="px-4 py-2 text-left font-bold text-gray-600">Kelas</th>
-                            <th className="px-4 py-2 text-left font-bold text-gray-600">Password</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200 bg-white">
-                          {CLASSES.map((cls) => (
-                            <tr key={cls}>
-                              <td className="px-4 py-2 text-gray-800 font-medium">{cls}</td>
-                              <td className="px-4 py-2">
-                                <input 
-                                  type="text" 
-                                  value={authData.classPasswords[cls] || ''}
-                                  onChange={(e) => handleClassPasswordChange(cls, e.target.value)}
-                                  placeholder="Belum diatur"
-                                  className="w-full border border-gray-200 rounded px-2 py-1 text-sm focus:border-orange-500"
-                                />
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                     {CLASSES.map(cls => (
+                       <div key={cls} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded border border-gray-100">
+                          <span className="text-sm font-medium text-gray-700">{cls}</span>
+                          <input 
+                            type="text" 
+                            value={authData.classPasswords[cls] || ''}
+                            onChange={(e) => handleClassPasswordChange(cls, e.target.value)}
+                            placeholder="Password..."
+                            className="w-40 text-sm border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-orange-500"
+                          />
+                       </div>
+                     ))}
                   </div>
                 </div>
 
-                <div className="pt-6 border-t border-gray-100 flex items-center justify-end gap-4 sticky bottom-0 bg-white py-2">
-                  {isAuthSaved && <span className="text-green-600 font-medium text-sm">Akun Disimpan!</span>}
+                <div className="pt-6 border-t border-gray-100 flex items-center justify-end gap-4 sticky bottom-0 bg-white p-4 shadow-up">
+                  {isAuthSaved && <span className="text-green-600 font-medium text-sm animate-pulse">Disimpan!</span>}
                   <button type="submit" className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold shadow-md">
-                    <Save size={18} className="inline mr-2" /> Simpan Akun
+                    <Save size={18} className="inline mr-2" /> Simpan Konfigurasi Akun
                   </button>
                 </div>
+
               </form>
             </div>
           )}
 
-          {/* --- TEACHER LEAVE TAB --- */}
-          {activeTab === 'LEAVE' && onToggleLeave && onDeleteLeave && (
-            <div className="space-y-8 animate-fade-in" id="leave-form-anchor">
-              <div className="border-b border-gray-200 pb-4">
-                <h2 className="text-xl font-bold text-gray-800">Perizinan Guru</h2>
-                <p className="text-sm text-gray-500 mt-1">Catat guru yang berhalangan hadir (Sakit, Izin, Dinas Luar).</p>
+          {/* --- LEAVE TAB --- */}
+          {activeTab === 'LEAVE' && (
+            <div className="space-y-6 animate-fade-in">
+              <div id="leave-form-anchor" className="border-b border-gray-200 pb-4 flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800">Perizinan Guru</h2>
+                  <p className="text-sm text-gray-500 mt-1">Catat guru yang berhalangan hadir.</p>
+                </div>
               </div>
 
               {/* Statistics Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                 <div className="bg-red-50 p-4 rounded-xl border border-red-100 flex flex-col items-center">
-                    <span className="text-red-500 text-xs font-bold uppercase mb-1">Sakit</span>
-                    <span className="text-2xl font-bold text-red-700">{leaveStats.SAKIT}</span>
+                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                    <h3 className="text-xs font-bold text-blue-600 uppercase">Total Izin</h3>
+                    <p className="text-2xl font-bold text-blue-800">{leaveStats.TOTAL}</p>
                  </div>
-                 <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-100 flex flex-col items-center">
-                    <span className="text-yellow-600 text-xs font-bold uppercase mb-1">Izin</span>
-                    <span className="text-2xl font-bold text-yellow-700">{leaveStats.IZIN}</span>
+                 <div className="bg-red-50 p-4 rounded-lg border border-red-100">
+                    <h3 className="text-xs font-bold text-red-600 uppercase">Sakit</h3>
+                    <p className="text-2xl font-bold text-red-800">{leaveStats.SAKIT}</p>
                  </div>
-                 <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex flex-col items-center">
-                    <span className="text-blue-500 text-xs font-bold uppercase mb-1">Dinas Luar</span>
-                    <span className="text-2xl font-bold text-blue-700">{leaveStats.DINAS_LUAR}</span>
+                 <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
+                    <h3 className="text-xs font-bold text-orange-600 uppercase">Izin</h3>
+                    <p className="text-2xl font-bold text-orange-800">{leaveStats.IZIN}</p>
                  </div>
-                 <div className="bg-gray-100 p-4 rounded-xl border border-gray-200 flex flex-col items-center">
-                    <span className="text-gray-500 text-xs font-bold uppercase mb-1">Total</span>
-                    <span className="text-2xl font-bold text-gray-700">{leaveStats.TOTAL}</span>
+                 <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                    <h3 className="text-xs font-bold text-purple-600 uppercase">Dinas Luar</h3>
+                    <p className="text-2xl font-bold text-purple-800">{leaveStats.DINAS_LUAR}</p>
                  </div>
               </div>
 
-              {/* Form Input */}
-              <div className={`p-4 rounded-xl border transition-colors ${editingId ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-100'}`}>
-                <h3 className={`text-sm font-bold mb-3 flex items-center gap-2 ${editingId ? 'text-orange-800' : 'text-blue-800'}`}>
-                  {editingId ? <Edit2 size={16} /> : <Plus size={16} />}
-                  {editingId ? 'Edit Izin' : 'Tambah Izin Baru'}
-                </h3>
-                <form onSubmit={handleSubmitLeave} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div>
-                     <label className="block text-xs font-bold text-gray-600 mb-1">Tanggal</label>
-                     <input 
-                       type="date"
-                       required
-                       value={leaveForm.date}
-                       onChange={(e) => setLeaveForm({...leaveForm, date: e.target.value})}
-                       className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                     />
-                   </div>
-                   <div>
-                     <label className="block text-xs font-bold text-gray-600 mb-1">Nama Guru</label>
-                     <select
-                       required
-                       value={leaveForm.teacherId}
-                       onChange={(e) => setLeaveForm({...leaveForm, teacherId: e.target.value})}
-                       className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                     >
-                       <option value="">-- Pilih Guru --</option>
-                       {teacherData.map((t: TeacherData) => (
-                         <option key={t.id} value={t.id}>{t.name}</option>
-                       ))}
-                     </select>
-                   </div>
-                   <div>
-                     <label className="block text-xs font-bold text-gray-600 mb-1">Jenis Izin</label>
-                     <select
-                       value={leaveForm.type}
-                       onChange={(e) => setLeaveForm({...leaveForm, type: e.target.value as LeaveType})}
-                       className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                     >
-                       <option value="SAKIT">Sakit</option>
-                       <option value="IZIN">Izin</option>
-                       <option value="DINAS_LUAR">Dinas Luar</option>
-                     </select>
-                   </div>
-                   <div>
-                     <label className="block text-xs font-bold text-gray-600 mb-1">Keterangan (Opsional)</label>
-                     <input 
-                       type="text"
-                       value={leaveForm.description}
-                       onChange={(e) => setLeaveForm({...leaveForm, description: e.target.value})}
-                       placeholder="Contoh: Rapat MKKS"
-                       className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                     />
-                   </div>
-                   <div className="md:col-span-2 flex justify-end gap-2">
-                     {editingId && (
-                       <button 
-                         type="button" 
-                         onClick={cancelEdit}
-                         className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-300"
-                       >
-                         Batal
-                       </button>
-                     )}
-                     <button 
-                       type="submit" 
-                       className={`px-4 py-2 text-white rounded-lg text-sm font-bold ${editingId ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'}`}
-                     >
-                       {editingId ? 'Update Izin' : 'Simpan Izin'}
-                     </button>
-                   </div>
-                </form>
-              </div>
-
-              {/* Filter */}
-              <div className="flex items-center gap-4 bg-white p-3 rounded-lg border border-gray-200">
-                 <Filter size={18} className="text-gray-400" />
-                 <select 
-                    value={filterTeacherId}
-                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterTeacherId(e.target.value)}
-                    className="flex-1 border-none bg-transparent text-sm font-semibold text-gray-700 focus:ring-0 cursor-pointer"
-                 >
-                    <option value="">-- Tampilkan Semua Guru --</option>
-                    {teacherData.map((t: TeacherData) => (
-                       <option key={t.id} value={`${t.id}`}>{t.name}</option>
-                    ))}
-                 </select>
-                 {filterTeacherId && (
-                    <button onClick={() => setFilterTeacherId('')} className="p-1 hover:bg-gray-100 rounded-full">
-                       <X size={16} className="text-gray-500" />
-                    </button>
-                 )}
-              </div>
-
-              {/* List */}
-              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200 text-sm">
-                   <thead className="bg-gray-50">
-                     <tr>
-                       <th className="px-4 py-3 text-left font-bold text-gray-600">Tanggal</th>
-                       <th className="px-4 py-3 text-left font-bold text-gray-600">Guru</th>
-                       <th className="px-4 py-3 text-center font-bold text-gray-600">Jenis</th>
-                       <th className="px-4 py-3 text-left font-bold text-gray-600">Keterangan</th>
-                       <th className="px-4 py-3 text-center font-bold text-gray-600">Aksi</th>
-                     </tr>
-                   </thead>
-                   <tbody className="divide-y divide-gray-200">
-                     {filteredLeaves.length > 0 ? (
-                       filteredLeaves.map((leave: TeacherLeave) => (
-                         <tr key={leave.id} className="hover:bg-gray-50">
-                           <td className="px-4 py-3 text-gray-900 whitespace-nowrap">{leave.date}</td>
-                           <td className="px-4 py-3 font-medium text-gray-800">{leave.teacherName}</td>
-                           <td className="px-4 py-3 text-center">
-                             <span className={`inline-block px-2 py-1 rounded text-xs font-bold 
-                               ${leave.type === 'SAKIT' ? 'bg-red-100 text-red-700' : 
-                                 leave.type === 'IZIN' ? 'bg-yellow-100 text-yellow-700' : 
-                                 'bg-blue-100 text-blue-700'}`}>
-                               {leave.type.replace('_', ' ')}
-                             </span>
-                           </td>
-                           <td className="px-4 py-3 text-gray-600 italic">{leave.description || '-'}</td>
-                           <td className="px-4 py-3 text-center">
-                             <div className="flex items-center justify-center gap-2">
-                                <button
-                                  onClick={() => handleEditClick(leave)}
-                                  className="text-blue-500 hover:text-blue-700 p-1 hover:bg-blue-50 rounded transition-colors"
-                                  title="Edit"
-                                >
-                                  <Edit2 size={16} />
-                                </button>
-                                <button 
-                                  onClick={() => onDeleteLeave(leave.id)}
-                                  className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded transition-colors"
-                                  title="Hapus"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                             </div>
-                           </td>
-                         </tr>
-                       ))
-                     ) : (
-                       <tr>
-                         <td colSpan={5} className="px-4 py-8 text-center text-gray-500 flex flex-col items-center justify-center">
-                           <AlertCircle className="w-8 h-8 text-gray-300 mb-2" />
-                           {filterTeacherId ? "Tidak ada izin untuk guru ini." : "Belum ada data izin guru."}
-                         </td>
-                       </tr>
-                     )}
-                   </tbody>
-                </table>
-              </div>
-
-            </div>
-          )}
-
-          {/* --- CALENDAR HOLIDAY TAB --- */}
-          {activeTab === 'CALENDAR' && onUpdateCalendar && (
-            <div className="space-y-8 animate-fade-in">
-              <div className="border-b border-gray-200 pb-4">
-                <h2 className="text-xl font-bold text-gray-800">Kalender Libur</h2>
-                <p className="text-sm text-gray-500 mt-1">Atur hari libur nasional atau cuti bersama.</p>
-              </div>
-
-              <div className="bg-purple-50 p-6 rounded-xl border border-purple-100">
-                <h3 className="text-lg font-bold text-purple-900 mb-4 flex items-center gap-2">
-                  <Plus size={20} /> Tambah Libur Baru
-                </h3>
-                <form onSubmit={handleAddCalendarEvent} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                  <div className="md:col-span-3">
-                    <label className="block text-xs font-bold text-purple-700 mb-1">Tanggal</label>
+              {/* Form */}
+              <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                <form onSubmit={handleSubmitLeave} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Tanggal</label>
                     <input 
                       type="date" 
                       required
-                      value={calDate}
-                      onChange={(e) => setCalDate(e.target.value)}
-                      className="w-full border border-purple-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"
+                      value={leaveForm.date}
+                      onChange={(e) => setLeaveForm(prev => ({ ...prev, date: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     />
                   </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-purple-700 mb-1">Hari</label>
-                    <div className="w-full bg-white border border-purple-200 rounded-lg px-3 py-2 text-sm text-gray-500 font-medium h-[38px] flex items-center">
-                      {getDayName(calDate) || '-'}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Nama Guru</label>
+                    <select
+                      required
+                      value={leaveForm.teacherId}
+                      onChange={(e) => setLeaveForm(prev => ({ ...prev, teacherId: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    >
+                      <option value="">-- Pilih Guru --</option>
+                      {teacherData.map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Jenis Izin</label>
+                    <div className="flex gap-4 mt-2">
+                       {['SAKIT', 'IZIN', 'DINAS_LUAR'].map(type => (
+                         <label key={type} className="flex items-center gap-2 cursor-pointer">
+                           <input 
+                             type="radio" 
+                             name="leaveType"
+                             checked={leaveForm.type === type}
+                             onChange={() => setLeaveForm(prev => ({ ...prev, type: type as LeaveType }))}
+                             className="text-indigo-600 focus:ring-indigo-500"
+                           />
+                           <span className="text-sm font-medium text-gray-700 capitalize">{type.replace('_', ' ')}</span>
+                         </label>
+                       ))}
                     </div>
                   </div>
-                  <div className="md:col-span-5">
-                    <label className="block text-xs font-bold text-purple-700 mb-1">Keterangan Libur</label>
-                    <input 
-                      type="text" 
-                      required
-                      value={calDesc}
-                      onChange={(e) => setCalDesc(e.target.value)}
-                      placeholder="Contoh: Hari Raya Idul Fitri"
-                      className="w-full border border-purple-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500"
-                    />
+                  <div>
+                     <label className="block text-sm font-semibold text-gray-700 mb-2">Keterangan</label>
+                     <input 
+                       type="text"
+                       value={leaveForm.description}
+                       onChange={(e) => setLeaveForm(prev => ({ ...prev, description: e.target.value }))}
+                       placeholder="Contoh: Demam tinggi / Rapat di Dinas"
+                       className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                     />
                   </div>
-                  <div className="md:col-span-2">
-                    <button type="submit" className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg font-bold hover:bg-purple-700 shadow-sm transition-colors">
-                      Tambah
-                    </button>
+                  <div className="md:col-span-2 flex justify-end gap-2">
+                     {editingId && (
+                        <button 
+                           type="button" 
+                           onClick={cancelEdit}
+                           className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300"
+                        >
+                           Batal
+                        </button>
+                     )}
+                     <button type="submit" className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold shadow-sm">
+                        {editingId ? 'Simpan Perubahan' : 'Tambah Data Izin'}
+                     </button>
                   </div>
                 </form>
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                <table className="min-w-full divide-y divide-gray-200 text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left font-bold text-gray-600">Tanggal</th>
-                      <th className="px-4 py-3 text-left font-bold text-gray-600">Hari</th>
-                      <th className="px-4 py-3 text-left font-bold text-gray-600">Keterangan</th>
-                      <th className="px-4 py-3 text-center font-bold text-gray-600">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {calendarEvents.length > 0 ? (
-                      calendarEvents.map(evt => (
-                        <tr key={evt.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{evt.date}</td>
-                          <td className="px-4 py-3 text-gray-600">{getDayName(evt.date)}</td>
-                          <td className="px-4 py-3 text-gray-700">{evt.description}</td>
-                          <td className="px-4 py-3 text-center">
-                            <button 
-                              onClick={() => handleDeleteCalendarEvent(evt.id)}
-                              className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Hapus"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
-                          Belum ada data hari libur. Silahkan tambahkan di atas.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+              {/* List */}
+              <div>
+                <div className="flex justify-between items-end mb-2">
+                   <h3 className="text-lg font-bold text-gray-800">Riwayat Perizinan</h3>
+                   <div className="flex items-center gap-2">
+                      <Filter size={16} className="text-gray-400" />
+                      <select 
+                        value={filterTeacherId}
+                        onChange={(e) => setFilterTeacherId(e.target.value)}
+                        className="text-sm border border-gray-300 rounded-lg px-2 py-1 bg-white"
+                      >
+                         <option value="">Semua Guru</option>
+                         {uniqueTeachers.map(name => {
+                            const t = teacherData.find(td => td.name === name);
+                            return t ? <option key={t.id} value={String(t.id)}>{name}</option> : null;
+                         })}
+                      </select>
+                   </div>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                   <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                         <tr>
+                            <th className="px-4 py-3 text-left font-bold text-gray-600">Tanggal</th>
+                            <th className="px-4 py-3 text-left font-bold text-gray-600">Nama Guru</th>
+                            <th className="px-4 py-3 text-center font-bold text-gray-600">Jenis</th>
+                            <th className="px-4 py-3 text-left font-bold text-gray-600">Keterangan</th>
+                            <th className="px-4 py-3 text-center font-bold text-gray-600">Aksi</th>
+                         </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                         {filteredLeaves.length > 0 ? filteredLeaves.map(leave => (
+                            <tr key={leave.id} className="hover:bg-gray-50">
+                               <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{leave.date}</td>
+                               <td className="px-4 py-3 text-gray-700">{leave.teacherName}</td>
+                               <td className="px-4 py-3 text-center">
+                                  <span className={`px-2 py-1 rounded text-xs font-bold 
+                                    ${leave.type === 'SAKIT' ? 'bg-red-100 text-red-700' : 
+                                      leave.type === 'IZIN' ? 'bg-orange-100 text-orange-700' : 
+                                      'bg-purple-100 text-purple-700'}`}>
+                                     {leave.type.replace('_', ' ')}
+                                  </span>
+                               </td>
+                               <td className="px-4 py-3 text-gray-600">{leave.description || '-'}</td>
+                               <td className="px-4 py-3 text-center">
+                                  <div className="flex items-center justify-center gap-2">
+                                     {onEditLeave && (
+                                       <button 
+                                         onClick={() => handleEditClick(leave)} 
+                                         className="text-blue-500 hover:bg-blue-50 p-1 rounded"
+                                         title="Edit"
+                                       >
+                                          <Edit2 size={16} />
+                                       </button>
+                                     )}
+                                     {onDeleteLeave && (
+                                       <button 
+                                         onClick={() => onDeleteLeave(leave.id)} 
+                                         className="text-red-500 hover:bg-red-50 p-1 rounded"
+                                         title="Hapus"
+                                       >
+                                          <Trash2 size={16} />
+                                       </button>
+                                     )}
+                                  </div>
+                               </td>
+                            </tr>
+                         )) : (
+                            <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">Tidak ada data izin.</td></tr>
+                         )}
+                      </tbody>
+                   </table>
+                </div>
               </div>
-
             </div>
           )}
 
-           {/* --- SUBJECT HOLIDAY TAB --- */}
-           {activeTab === 'SUBJECT_HOLIDAY' && onToggleConstraint && (
-              <HolidayManager 
-                teacherData={teacherData} 
-                constraints={unavailableConstraints} 
-                onToggle={onToggleConstraint}
-                calendarEvents={calendarEvents}
-                onUpdateCalendar={onUpdateCalendar || (() => {})} 
-                // We don't pass onSave here because saving is handled via App state propagation or implicit saves
-              />
-           )}
+          {/* --- CALENDAR TAB --- */}
+          {activeTab === 'CALENDAR' && (
+             <div className="space-y-6 animate-fade-in">
+                <div className="border-b border-gray-200 pb-4">
+                  <h2 className="text-xl font-bold text-gray-800">Kalender Libur Nasional</h2>
+                  <p className="text-sm text-gray-500 mt-1">Atur tanggal merah agar tidak bisa diisi jadwal/absen.</p>
+                </div>
 
-           {/* --- STUDENT TAB --- */}
-           {activeTab === 'STUDENT' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+                   <h3 className="text-lg font-bold text-blue-900 mb-4 flex items-center gap-2">
+                      <Plus size={20} /> {editingEventId ? 'Edit Hari Libur' : 'Tambah Hari Libur'}
+                   </h3>
+                   <form onSubmit={handleAddCalendarEvent} className="flex flex-col md:flex-row gap-4 items-end">
+                      <div className="flex-1 w-full">
+                         <label className="block text-xs font-bold text-blue-700 mb-1">Tanggal</label>
+                         <input 
+                            type="date" 
+                            required
+                            value={calDate}
+                            onChange={(e) => setCalDate(e.target.value)}
+                            className="w-full border border-blue-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                         />
+                      </div>
+                      <div className="w-full md:w-32">
+                         <label className="block text-xs font-bold text-blue-700 mb-1">Hari</label>
+                         <input 
+                            type="text" 
+                            readOnly
+                            value={getDayName(calDate)}
+                            className="w-full bg-blue-100 border border-blue-200 rounded-lg px-3 py-2 text-sm font-semibold text-blue-800"
+                            placeholder="-"
+                         />
+                      </div>
+                      <div className="flex-[2] w-full">
+                         <label className="block text-xs font-bold text-blue-700 mb-1">Keterangan Libur</label>
+                         <input 
+                            type="text" 
+                            required
+                            value={calDesc}
+                            onChange={(e) => setCalDesc(e.target.value)}
+                            placeholder="Contoh: Hari Raya Idul Fitri"
+                            className="w-full border border-blue-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                         />
+                      </div>
+                      <div className="flex gap-2 w-full md:w-auto">
+                         {editingEventId && (
+                            <button 
+                               type="button" 
+                               onClick={() => { setEditingEventId(null); setCalDate(''); setCalDesc(''); }} 
+                               className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300"
+                            >
+                               Batal
+                            </button>
+                         )}
+                         <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-sm flex-1 md:flex-none">
+                            {editingEventId ? 'Simpan' : 'Tambah'}
+                         </button>
+                      </div>
+                   </form>
+                </div>
+
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                   <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                         <tr>
+                            <th className="px-4 py-3 text-left font-bold text-gray-600">Tanggal</th>
+                            <th className="px-4 py-3 text-left font-bold text-gray-600">Hari</th>
+                            <th className="px-4 py-3 text-left font-bold text-gray-600">Keterangan</th>
+                            <th className="px-4 py-3 text-center font-bold text-gray-600">Aksi</th>
+                         </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                         {calendarEvents.length > 0 ? (
+                            calendarEvents.map(evt => (
+                               <tr key={evt.id} className="hover:bg-gray-50">
+                                  <td className="px-4 py-3 font-medium text-gray-900">{evt.date}</td>
+                                  <td className="px-4 py-3 text-gray-600">{getDayName(evt.date)}</td>
+                                  <td className="px-4 py-3 text-gray-700">{evt.description}</td>
+                                  <td className="px-4 py-3 text-center">
+                                     <div className="flex items-center justify-center gap-2">
+                                        <button 
+                                           onClick={() => handleEditCalendarEvent(evt.id)}
+                                           className="text-blue-500 hover:text-blue-700 p-1 hover:bg-blue-50 rounded"
+                                        >
+                                           <Edit2 size={16} />
+                                        </button>
+                                        <button 
+                                           onClick={() => handleDeleteCalendarEvent(evt.id)}
+                                           className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
+                                        >
+                                           <Trash2 size={16} />
+                                        </button>
+                                     </div>
+                                  </td>
+                               </tr>
+                            ))
+                         ) : (
+                            <tr>
+                               <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
+                                  Belum ada data hari libur.
+                               </td>
+                            </tr>
+                         )}
+                      </tbody>
+                   </table>
+                </div>
+
+                <div className="mt-6 text-right sticky bottom-0 bg-white p-4 border-t border-gray-100">
+                   {isCalendarSaved && <span className="text-green-600 font-medium text-sm animate-pulse mr-4">Disimpan!</span>}
+                   <button 
+                      onClick={handleCalendarSaveTrigger}
+                      className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-bold shadow-md"
+                   >
+                      <Save size={18} className="inline mr-2" /> Simpan Kalender
+                   </button>
+                </div>
+             </div>
+          )}
+
+          {/* --- SUBJECT HOLIDAY TAB --- */}
+          {activeTab === 'SUBJECT_HOLIDAY' && (
+             <HolidayManager 
+                teacherData={teacherData}
+                constraints={unavailableConstraints}
+                onToggle={onToggleConstraint || (() => {})}
+                calendarEvents={calendarEvents}
+                onUpdateCalendar={onUpdateCalendar || (() => {})}
+                onSave={handleSubjectHolidaySave}
+             />
+          )}
+
+          {/* --- STUDENT TAB --- */}
+          {activeTab === 'STUDENT' && (
              <div className="space-y-6 animate-fade-in">
                <div className="border-b border-gray-200 pb-4">
-                 <h2 className="text-xl font-bold text-gray-800">Manajemen Siswa</h2>
-                 <p className="text-sm text-gray-500 mt-1">Input data siswa secara manual atau upload Excel.</p>
+                  <h2 className="text-xl font-bold text-gray-800">Manajemen Siswa</h2>
+                  <p className="text-sm text-gray-500 mt-1">Input data siswa untuk keperluan absensi.</p>
                </div>
-
-               {/* Sub Tabs */}
-               <div className="flex gap-4 border-b border-gray-200">
+               
+               <div className="flex gap-4 mb-4">
                   <button 
                     onClick={() => setStudentTabMode('MANUAL')}
-                    className={`pb-3 text-sm font-bold border-b-2 transition-colors ${studentTabMode === 'MANUAL' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                    className={`px-4 py-2 rounded-lg font-bold text-sm ${studentTabMode === 'MANUAL' ? 'bg-indigo-600 text-white shadow' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                   >
-                    Input Data Manual
+                    Input Manual
                   </button>
                   <button 
                     onClick={() => setStudentTabMode('UPLOAD')}
-                    className={`pb-3 text-sm font-bold border-b-2 transition-colors ${studentTabMode === 'UPLOAD' ? 'border-green-600 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                    className={`px-4 py-2 rounded-lg font-bold text-sm ${studentTabMode === 'UPLOAD' ? 'bg-green-600 text-white shadow' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                   >
                     Upload Data (Excel)
                   </button>
                </div>
 
-               {/* MANUAL INPUT FORM */}
-               {studentTabMode === 'MANUAL' && (
-                 <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100">
-                    <h3 className="text-lg font-bold text-indigo-900 mb-4 flex items-center gap-2">
-                       {editingStudentId ? <Edit2 size={20} /> : <Plus size={20} />} 
-                       {editingStudentId ? 'Edit Data Siswa' : 'Tambah Siswa Baru'}
-                    </h3>
-                    <form onSubmit={handleStudentSubmit} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                       <div className="md:col-span-3">
-                          <label className="block text-xs font-bold text-indigo-700 mb-1">Kelas</label>
-                          <select 
-                             required
-                             value={studentForm.className}
-                             onChange={(e) => setStudentForm({...studentForm, className: e.target.value})}
-                             className="w-full border border-indigo-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
-                          >
-                             {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
-                          </select>
-                       </div>
-                       <div className="md:col-span-7">
-                          <label className="block text-xs font-bold text-indigo-700 mb-1">Nama Siswa</label>
-                          <input 
-                             type="text"
-                             required
-                             value={studentForm.name}
-                             onChange={(e) => setStudentForm({...studentForm, name: e.target.value})}
-                             className="w-full border border-indigo-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
-                             placeholder="Nama Lengkap Siswa"
-                          />
-                       </div>
-                       <div className="md:col-span-2 flex gap-2">
-                          {editingStudentId && (
-                             <button 
-                               type="button" 
-                               onClick={() => { setEditingStudentId(null); setStudentForm({name:'', className: CLASSES[0]}); }}
-                               className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300"
-                             >
-                                Batal
-                             </button>
-                          )}
-                          <button type="submit" className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 shadow-sm transition-colors">
-                             {editingStudentId ? 'Update' : 'Simpan'}
-                          </button>
-                       </div>
-                    </form>
-                    
-                    {/* Manual Save Button Footer */}
-                    <div className="mt-6 pt-4 border-t border-indigo-200 flex justify-end items-center gap-3">
-                       {isStudentSaved && <span className="text-green-600 font-bold text-sm animate-fade-in">Data Berhasil Disimpan!</span>}
+               {studentTabMode === 'MANUAL' ? (
+                 <>
+                   <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                      <h3 className="font-bold text-gray-800 mb-4">{editingStudentId ? 'Edit Siswa' : 'Tambah Siswa Manual'}</h3>
+                      <form onSubmit={handleStudentSubmit} className="flex flex-col md:flex-row gap-4 items-end">
+                         <div className="w-full md:w-48">
+                            <label className="block text-xs font-bold text-gray-600 mb-1">Kelas</label>
+                            <select 
+                               value={studentForm.className}
+                               onChange={(e) => setStudentForm({...studentForm, className: e.target.value})}
+                               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                            >
+                               {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                         </div>
+                         <div className="flex-1 w-full">
+                            <label className="block text-xs font-bold text-gray-600 mb-1">Nama Siswa</label>
+                            <input 
+                               type="text" 
+                               required
+                               value={studentForm.name}
+                               onChange={(e) => setStudentForm({...studentForm, name: e.target.value})}
+                               placeholder="Nama Lengkap..."
+                               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                            />
+                         </div>
+                         <div className="flex gap-2">
+                            {editingStudentId && (
+                               <button 
+                                  type="button" 
+                                  onClick={() => { setEditingStudentId(null); setStudentForm({name:'', className: CLASSES[0]}); }}
+                                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300"
+                               >
+                                  Batal
+                               </button>
+                            )}
+                            <button type="submit" className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 shadow-sm">
+                               {editingStudentId ? 'Simpan' : 'Tambah'}
+                            </button>
+                         </div>
+                      </form>
+                   </div>
+
+                   <div>
+                      <div className="flex justify-between items-center mb-2">
+                         <h3 className="font-bold text-gray-800">Daftar Siswa</h3>
+                         <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-gray-500">Filter Kelas:</span>
+                            <select 
+                               value={studentClassFilter}
+                               onChange={(e) => setStudentClassFilter(e.target.value)}
+                               className="text-sm border border-gray-300 rounded-lg px-2 py-1 bg-white"
+                            >
+                               <option value="">Semua</option>
+                               {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                         </div>
+                      </div>
+                      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm max-h-96 overflow-y-auto">
+                         <table className="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead className="bg-gray-50 sticky top-0">
+                               <tr>
+                                  <th className="px-4 py-3 text-left font-bold text-gray-600">No</th>
+                                  <th className="px-4 py-3 text-left font-bold text-gray-600">Kelas</th>
+                                  <th className="px-4 py-3 text-left font-bold text-gray-600">Nama Siswa</th>
+                                  <th className="px-4 py-3 text-center font-bold text-gray-600">Aksi</th>
+                               </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                               {filteredStudents.length > 0 ? filteredStudents.map((s, idx) => (
+                                  <tr key={s.id} className="hover:bg-gray-50">
+                                     <td className="px-4 py-2 text-gray-500">{idx + 1}</td>
+                                     <td className="px-4 py-2 text-gray-800 font-medium">
+                                        <span className={`px-2 py-1 rounded text-xs border ${s.className.startsWith('VII') ? 'bg-green-50 border-green-200 text-green-700' : s.className.startsWith('VIII') ? 'bg-yellow-50 border-yellow-200 text-yellow-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                                           {s.className}
+                                        </span>
+                                     </td>
+                                     <td className="px-4 py-2 text-gray-800">{s.name}</td>
+                                     <td className="px-4 py-2 text-center flex justify-center gap-2">
+                                        {onEditStudent && (
+                                           <button onClick={() => startEditStudent(s)} className="text-blue-500 hover:bg-blue-50 p-1 rounded"><Edit2 size={16}/></button>
+                                        )}
+                                        {onDeleteStudent && (
+                                           <button onClick={() => onDeleteStudent(s.id)} className="text-red-500 hover:bg-red-50 p-1 rounded"><Trash2 size={16}/></button>
+                                        )}
+                                     </td>
+                                  </tr>
+                               )) : (
+                                  <tr><td colSpan={4} className="px-4 py-8 text-center text-gray-400">Tidak ada data siswa.</td></tr>
+                               )}
+                            </tbody>
+                         </table>
+                      </div>
+                   </div>
+
+                   <div className="mt-4 text-right">
+                      {isStudentSaved && <span className="text-green-600 font-medium text-sm animate-pulse mr-4">Disimpan!</span>}
+                      <button 
+                         onClick={handleStudentSaveTrigger}
+                         className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-bold shadow-md"
+                      >
+                         <Save size={18} className="inline mr-2" /> Simpan Perubahan
+                      </button>
+                   </div>
+                 </>
+               ) : (
+                 <div className="space-y-6">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                       <h3 className="font-bold text-green-800 mb-2 flex items-center gap-2">
+                          <FileSpreadsheet size={20} /> Langkah 1: Download Format
+                       </h3>
+                       <p className="text-sm text-green-700 mb-4">Unduh template Excel, lalu isi data siswa (No, Kelas, Nama).</p>
                        <button 
-                          type="button"
-                          onClick={handleStudentSaveTrigger}
-                          className="px-6 py-2 bg-indigo-700 text-white rounded-lg font-bold hover:bg-indigo-800 shadow-md transition-all active:scale-95"
+                          onClick={downloadStudentTemplate}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 shadow-sm flex items-center gap-2"
                        >
-                          Simpan Perubahan
+                          <Download size={18} /> Download Template Excel
                        </button>
                     </div>
+
+                    <div className="bg-white border border-gray-200 rounded-lg p-6">
+                       <h3 className="font-bold text-gray-800 mb-2 flex items-center gap-2">
+                          <Upload size={20} className="text-indigo-600" /> Langkah 2: Upload Data
+                       </h3>
+                       <p className="text-sm text-gray-500 mb-4">Pilih kelas target (opsional, jika di excel kosong) dan upload file.</p>
+                       
+                       <div className="flex flex-col md:flex-row gap-4 items-end">
+                          <div className="w-full md:w-48">
+                             <label className="block text-xs font-bold text-gray-600 mb-1">Target Kelas Default</label>
+                             <select 
+                                value={uploadClassTarget}
+                                onChange={(e) => setUploadClassTarget(e.target.value)}
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                             >
+                                {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
+                             </select>
+                          </div>
+                          <div className="flex-1 w-full">
+                             <label className="block text-xs font-bold text-gray-600 mb-1">Pilih File Excel (.xlsx)</label>
+                             <input 
+                                type="file" 
+                                accept=".xlsx, .xls"
+                                onChange={handleFileUpload}
+                                className="block w-full text-sm text-slate-500
+                                  file:mr-4 file:py-2 file:px-4
+                                  file:rounded-full file:border-0
+                                  file:text-sm file:font-semibold
+                                  file:bg-indigo-50 file:text-indigo-700
+                                  hover:file:bg-indigo-100"
+                             />
+                          </div>
+                       </div>
+                    </div>
+
+                    <div className="mt-4 text-right">
+                      {isStudentSaved && <span className="text-green-600 font-medium text-sm animate-pulse mr-4">Disimpan!</span>}
+                      <button 
+                         onClick={handleStudentSaveTrigger}
+                         className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-bold shadow-md"
+                      >
+                         <Save size={18} className="inline mr-2" /> Simpan Perubahan
+                      </button>
+                   </div>
                  </div>
                )}
-
-               {/* UPLOAD EXCEL FORM */}
-               {studentTabMode === 'UPLOAD' && (
-                  <div className="bg-green-50 p-6 rounded-xl border border-green-100">
-                     <h3 className="text-lg font-bold text-green-900 mb-4 flex items-center gap-2">
-                        <Upload size={20} /> Upload Data Siswa via Excel
-                     </h3>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div>
-                           <p className="text-sm text-green-800 mb-2 font-semibold">Langkah 1: Download Format</p>
-                           <button 
-                              onClick={downloadStudentTemplate}
-                              className="flex items-center gap-2 px-4 py-2 bg-white border border-green-200 text-green-700 rounded-lg hover:bg-green-100 transition-colors shadow-sm font-medium text-sm w-full justify-center"
-                           >
-                              <FileSpreadsheet size={18} /> Download Template Excel
-                           </button>
-                           <p className="text-xs text-green-600 mt-2">
-                              Format kolom: No, Kelas, Nama Siswa.
-                           </p>
-                        </div>
-                        <div>
-                           <p className="text-sm text-green-800 mb-2 font-semibold">Langkah 2: Upload Data</p>
-                           <div className="space-y-3">
-                              <div>
-                                 <label className="block text-xs font-bold text-green-700 mb-1">Pilih Kelas Target</label>
-                                 <select 
-                                    value={uploadClassTarget}
-                                    onChange={(e) => setUploadClassTarget(e.target.value)}
-                                    className="w-full border border-green-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500"
-                                 >
-                                    {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
-                                 </select>
-                              </div>
-                              <input 
-                                 type="file" 
-                                 accept=".xlsx, .xls"
-                                 onChange={handleFileUpload}
-                                 className="block w-full text-sm text-green-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-green-100 file:text-green-700 hover:file:bg-green-200"
-                              />
-                           </div>
-                        </div>
-                     </div>
-                     
-                     {/* Upload Save Button Footer */}
-                     <div className="mt-8 pt-4 border-t border-green-200 flex justify-end items-center gap-3">
-                        {isStudentSaved && <span className="text-green-600 font-bold text-sm animate-fade-in">Data Berhasil Disimpan!</span>}
-                        <button 
-                           type="button"
-                           onClick={handleStudentSaveTrigger}
-                           className="px-6 py-2 bg-green-700 text-white rounded-lg font-bold hover:bg-green-800 shadow-md transition-all active:scale-95"
-                        >
-                           Simpan Perubahan
-                        </button>
-                     </div>
-                  </div>
-               )}
-
-               {/* STUDENT LIST TABLE */}
-               <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                  {/* Table Toolbar */}
-                  <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-                     <h4 className="font-bold text-gray-700 text-sm">Daftar Siswa</h4>
-                     <div className="flex items-center gap-2">
-                        <Filter size={14} className="text-gray-400" />
-                        <select 
-                           value={studentClassFilter}
-                           onChange={(e) => setStudentClassFilter(e.target.value)}
-                           className="text-sm border-none bg-transparent font-semibold text-gray-600 focus:ring-0 cursor-pointer"
-                        >
-                           <option value="">Semua Kelas</option>
-                           {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                     </div>
-                  </div>
-                  
-                  <div className="overflow-x-auto max-h-[400px]">
-                     <table className="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead className="bg-gray-50 sticky top-0 z-10">
-                           <tr>
-                              <th className="px-4 py-3 text-left font-bold text-gray-600 w-16">No</th>
-                              <th className="px-4 py-3 text-left font-bold text-gray-600 w-24">Kelas</th>
-                              <th className="px-4 py-3 text-left font-bold text-gray-600">Nama Siswa</th>
-                              <th className="px-4 py-3 text-center font-bold text-gray-600 w-24">Aksi</th>
-                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200 bg-white">
-                           {filteredStudents.length > 0 ? (
-                              filteredStudents.map((student, idx) => (
-                                 <tr key={student.id} className="hover:bg-gray-50">
-                                    <td className="px-4 py-2 text-gray-500 text-center">{idx + 1}</td>
-                                    <td className="px-4 py-2">
-                                       <span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs font-bold border border-gray-200">
-                                          {student.className}
-                                       </span>
-                                    </td>
-                                    <td className="px-4 py-2 font-medium text-gray-800">{student.name}</td>
-                                    <td className="px-4 py-2 text-center">
-                                       <div className="flex items-center justify-center gap-2">
-                                          <button 
-                                             onClick={() => startEditStudent(student)}
-                                             className="text-blue-500 hover:bg-blue-50 p-1 rounded"
-                                             title="Edit"
-                                          >
-                                             <Edit2 size={16} />
-                                          </button>
-                                          <button 
-                                             onClick={() => onDeleteStudent && onDeleteStudent(student.id)}
-                                             className="text-red-500 hover:bg-red-50 p-1 rounded"
-                                             title="Hapus"
-                                          >
-                                             <Trash2 size={16} />
-                                          </button>
-                                       </div>
-                                    </td>
-                                 </tr>
-                              ))
-                           ) : (
-                              <tr>
-                                 <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
-                                    Tidak ada data siswa.
-                                 </td>
-                              </tr>
-                           )}
-                        </tbody>
-                     </table>
-                  </div>
-                  <div className="bg-gray-50 px-4 py-2 border-t border-gray-200 text-xs text-gray-500 text-right">
-                     Total Siswa: {filteredStudents.length}
-                  </div>
-               </div>
              </div>
-           )}
+          )}
 
         </div>
       </div>

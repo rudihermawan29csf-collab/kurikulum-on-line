@@ -23,14 +23,18 @@ const App: React.FC = () => {
         academicYear: '2025/2026',
         semester: 'Genap',
         lastUpdated: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
-        logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_Tut_Wuri_Handayani.png/800px-Logo_Tut_Wuri_Handayani.png'
+        logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_Tut_Wuri_Handayani.png/800px-Logo_Tut_Wuri_Handayani.png',
+        headmaster: '',
+        headmasterNip: ''
       };
     } catch {
       return {
         academicYear: '2025/2026',
         semester: 'Genap',
         lastUpdated: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
-        logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_Tut_Wuri_Handayani.png/800px-Logo_Tut_Wuri_Handayani.png'
+        logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_Tut_Wuri_Handayani.png/800px-Logo_Tut_Wuri_Handayani.png',
+        headmaster: '',
+        headmasterNip: ''
       };
     }
   });
@@ -477,16 +481,17 @@ const App: React.FC = () => {
                scheduleMap={scheduleMap}
                currentUser={currentUser}
                role={userRole}
+               appSettings={appSettings} // PASS APP SETTINGS
                calendarEvents={calendarEvents}
                teacherLeaves={teacherLeaves}
-               students={students} // PASS STUDENTS HERE
+               students={students} 
                // Journal Props
                teachingMaterials={teachingMaterials}
                onAddMaterial={handleAddMaterial}
                onDeleteMaterial={handleDeleteMaterial}
                teachingJournals={teachingJournals}
                onAddJournal={handleAddJournal}
-               onEditJournal={handleEditJournal} // ADDED THIS
+               onEditJournal={handleEditJournal}
                onDeleteJournal={handleDeleteJournal}
              />
           )}

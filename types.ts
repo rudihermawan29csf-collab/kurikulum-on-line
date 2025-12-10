@@ -38,6 +38,8 @@ export interface AppSettings {
   semester: string;
   lastUpdated: string;
   logoUrl: string;
+  headmaster?: string;
+  headmasterNip?: string;
 }
 
 export interface AuthSettings {
@@ -85,7 +87,6 @@ export interface TeachingJournal {
   notes: string;
   studentAttendance: Record<string, 'H' | 'S' | 'I' | 'A' | 'DL'>; // Student ID -> Status
   attendance?: string;
-  documentationPhoto?: string;
 }
 
 export interface Student {
