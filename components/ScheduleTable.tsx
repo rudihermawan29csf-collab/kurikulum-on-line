@@ -520,9 +520,6 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                const otherTeacher = codeToTeacherMap[otherCodeInClass];
                                if (otherTeacher === currentTeacherName && otherCodeInClass !== currentCode) {
                                    // Only warn, don't necessarily turn red unless strictly enforced
-                                   // But prompt asked for warning/prevention
-                                   // Here we just flag visual warning
-                                   // Logic to prevent entry is in the dropdown render
                                }
                             }
                          });
