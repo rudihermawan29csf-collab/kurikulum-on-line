@@ -1338,4 +1338,34 @@ const ClassTeacherSchedule: React.FC<ClassTeacherScheduleProps> = ({
                                                      {cls}
                                                   </span>
                                                </td>
-                                               <td className="px-4 py-
+                                               <td className="px-4 py-3 text-center font-mono text-xs text-gray-600 border-r border-gray-100">{scheduledCode}</td>
+                                               <td className="px-4 py-3 text-sm font-semibold text-gray-800">{info?.subject}</td>
+                                            </tr>
+                                         );
+                                      }
+                                   });
+                                });
+                             });
+                             
+                             return rows.length > 0 ? rows : (
+                                <tr><td colSpan={7} className="p-8 text-center text-gray-400">Tidak ada jadwal mengajar.</td></tr>
+                             );
+                          })()}
+                       </tbody>
+                    </table>
+                 </div>
+              ) : (
+                 <div className="p-12 text-center text-gray-400 font-medium">Silakan pilih guru untuk melihat jadwal.</div>
+              )}
+           </div>
+        )}
+
+        {activeTab === 'ATTENDANCE' && renderAttendanceInput()}
+        {activeTab === 'JOURNAL' && renderJournalTab()}
+        {activeTab === 'MONITORING' && renderAttendanceMonitoring()}
+      </div>
+    </div>
+  );
+};
+
+export default ClassTeacherSchedule;
