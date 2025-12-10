@@ -1,8 +1,7 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { TeacherData, UserRole, CalendarEvent, TeacherLeave, TeachingMaterial, TeachingJournal, Student, AppSettings } from '../types';
 import { SCHEDULE_DATA, CLASSES, COLOR_PALETTE } from '../constants';
-import { User, School, CalendarClock, Table, Download, FileText, ClipboardList, CheckCircle, XCircle, Clock, Save, Info, BookOpen, PenTool, Plus, Trash2, ChevronDown, BarChart3, Edit2, X, ZoomIn, CheckSquare, FileSpreadsheet } from 'lucide-react';
+import { User, School, ClipboardList, BookOpen, Download, FileText, CheckCircle, Clock, Save, Info, PenTool, Plus, Trash2, ChevronDown, BarChart3, Edit2, X, FileSpreadsheet } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -509,8 +508,10 @@ const ClassTeacherSchedule: React.FC<ClassTeacherScheduleProps> = ({
   useEffect(() => {
     if (jourForm.jamKe) {
        const firstSlot = jourForm.jamKe.split(',')[0];
-       const [day, jam, cls] = firstSlot.split('|');
-       if (cls) setJourForm(prev => ({ ...prev, className: cls }));
+       const parts = firstSlot.split('|');
+       if (parts.length >= 3) {
+          setJourForm(prev => ({ ...prev, className: parts[2] }));
+       }
     }
   }, [jourForm.jamKe]);
 
@@ -577,7 +578,7 @@ const ClassTeacherSchedule: React.FC<ClassTeacherScheduleProps> = ({
   const saveJournal = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
-    const journalData = { id: editingJournalId || Date.now().toString(), teacherName: currentUser, ...jourForm };
+    const journalData: TeachingJournal = { id: editingJournalId || Date.now().toString(), teacherName: currentUser, ...jourForm };
     if (editingJournalId && onEditJournal) {
       onEditJournal(journalData);
       setEditingJournalId(null);
@@ -635,7 +636,7 @@ const ClassTeacherSchedule: React.FC<ClassTeacherScheduleProps> = ({
           if (currentSelected.includes(slotVal)) {
               currentSelected = currentSelected.filter(s => s !== slotVal);
           } else {
-              if (currentSelected.length > 0) {
+              if (currentSelected.length > 0 && currentSelected[0]) {
                  const existingClass = currentSelected[0].split('|')[2];
                  const newClass = slotVal.split('|')[2];
                  if (existingClass !== newClass) {
@@ -668,8 +669,8 @@ const ClassTeacherSchedule: React.FC<ClassTeacherScheduleProps> = ({
 
      const classStudents = students.filter(s => s.className === monitoringClass);
 
-     // Group dates
-     const dates = Array.from(new Set(classJournals.map(j => j.date))).sort();
+     // Group dates (cast to string[] to help TS)
+     const dates: string[] = Array.from(new Set(classJournals.map(j => j.date))).sort();
 
      const downloadMonitoringPDF = (size: 'a4' | 'f4') => {
         const doc = new jsPDF('l', 'mm', size === 'f4' ? [330, 210] : 'a4');
@@ -958,7 +959,7 @@ const ClassTeacherSchedule: React.FC<ClassTeacherScheduleProps> = ({
                       </div>
                       {jourForm.chapter && (
                          <div>
-                             <label className="block text-xs font-bold text-gray-600 mb-1">Sub Bab (Bisa > 1)</label>
+                             <label className="block text-xs font-bold text-gray-600 mb-1">Sub Bab (Bisa &gt; 1)</label>
                              <div className="max-h-32 overflow-y-auto border rounded p-2 bg-gray-50 space-y-1">
                                 {availableSubChapters.map((sub, idx) => (
                                     <label key={idx} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-gray-100 p-1 rounded">
@@ -1337,34 +1338,4 @@ const ClassTeacherSchedule: React.FC<ClassTeacherScheduleProps> = ({
                                                      {cls}
                                                   </span>
                                                </td>
-                                               <td className="px-4 py-3 text-center font-mono text-xs text-gray-600 border-r border-gray-100">{scheduledCode}</td>
-                                               <td className="px-4 py-3 text-sm font-semibold text-gray-800">{info?.subject}</td>
-                                            </tr>
-                                         );
-                                      }
-                                   });
-                                });
-                             });
-                             
-                             return rows.length > 0 ? rows : (
-                                <tr><td colSpan={7} className="p-8 text-center text-gray-400">Tidak ada jadwal mengajar.</td></tr>
-                             );
-                          })()}
-                       </tbody>
-                    </table>
-                 </div>
-              ) : (
-                 <div className="p-12 text-center text-gray-400 font-medium">Silakan pilih guru untuk melihat jadwal.</div>
-              )}
-           </div>
-        )}
-
-        {activeTab === 'ATTENDANCE' && renderAttendanceInput()}
-        {activeTab === 'JOURNAL' && renderJournalTab()}
-        {activeTab === 'MONITORING' && renderAttendanceMonitoring()}
-      </div>
-    </div>
-  );
-};
-
-export default ClassTeacherSchedule;
+                                               <td className="px-4 py-
