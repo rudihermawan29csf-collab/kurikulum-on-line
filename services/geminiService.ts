@@ -5,16 +5,12 @@ import { TeacherData } from "../types";
 const getDataContext = (data: TeacherData[]) => {
   const header = "No,Name,Subject,TotalHours,AdditionalTask";
   const rows = data.map(t => 
-    `${t.no},${t.name},${t.subject},${t.totalHours},${t.additionalTask}`
+    `${t.no},${t.name},${t.subject},${t.totalHours},${t.additionalTask ?? '-'}`
   ).join("\n");
   return `Dataset:\n${header}\n${rows}`;
 };
 
 export const askGemini = async (question: string, data?: TeacherData[]): Promise<string> => {
-  if (!process.env.API_KEY) {
-    return "Error: API Key is missing in environment variables.";
-  }
-
   // Fallback if data not provided (though App should provide it)
   if (!data) return "Data tidak tersedia untuk analisis.";
 

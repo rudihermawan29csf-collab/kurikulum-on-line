@@ -44,10 +44,10 @@ const TeacherTable: React.FC<TeacherTableProps> = ({ data, searchTerm, onAdd, on
   });
 
   const filteredData = data.filter(t => 
-    t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.additionalTask?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.code.toLowerCase().includes(searchTerm.toLowerCase())
+    (t.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (t.subject || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (t.additionalTask || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (t.code || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleDownloadPDF = () => {
@@ -68,16 +68,16 @@ const TeacherTable: React.FC<TeacherTableProps> = ({ data, searchTerm, onAdd, on
     ];
 
     const tableRows = filteredData.map(row => [
-      row.no,
-      row.name,
-      row.subject,
-      row.code,
-      row.hoursVII?.A || '', row.hoursVII?.B || '', row.hoursVII?.C || '',
-      row.hoursVIII?.A || '', row.hoursVIII?.B || '', row.hoursVIII?.C || '',
-      row.hoursIX?.A || '', row.hoursIX?.B || '', row.hoursIX?.C || '',
-      row.additionalTask === '-' ? '' : row.additionalTask,
+      row.no || '',
+      row.name || '',
+      row.subject || '',
+      row.code || '',
+      row.hoursVII?.A ?? '', row.hoursVII?.B ?? '', row.hoursVII?.C ?? '',
+      row.hoursVIII?.A ?? '', row.hoursVIII?.B ?? '', row.hoursVIII?.C ?? '',
+      row.hoursIX?.A ?? '', row.hoursIX?.B ?? '', row.hoursIX?.C ?? '',
+      (!row.additionalTask || row.additionalTask === '-') ? '' : row.additionalTask,
       row.additionalHours || '',
-      row.totalHours
+      row.totalHours || 0
     ]);
 
     autoTable(doc, {
@@ -106,12 +106,12 @@ const TeacherTable: React.FC<TeacherTableProps> = ({ data, searchTerm, onAdd, on
   const handleDownloadExcel = () => {
     // Flatten data for Excel
     const excelData = filteredData.map(row => ({
-      "No": row.no,
-      "Nama Guru": row.name,
-      "NIP": row.nip,
-      "Pangkat/Gol": `${row.rank} ${row.gol}`,
-      "Mata Pelajaran": row.subject,
-      "Kode Mapel": row.code,
+      "No": row.no || '',
+      "Nama Guru": row.name || '',
+      "NIP": row.nip || '',
+      "Pangkat/Gol": `${row.rank || ''} ${row.gol || ''}`.trim(),
+      "Mata Pelajaran": row.subject || '',
+      "Kode Mapel": row.code || '',
       "VII A": row.hoursVII?.A || 0,
       "VII B": row.hoursVII?.B || 0,
       "VII C": row.hoursVII?.C || 0,
@@ -121,9 +121,9 @@ const TeacherTable: React.FC<TeacherTableProps> = ({ data, searchTerm, onAdd, on
       "IX A": row.hoursIX?.A || 0,
       "IX B": row.hoursIX?.B || 0,
       "IX C": row.hoursIX?.C || 0,
-      "Tugas Tambahan": row.additionalTask,
-      "Jam Tambahan": row.additionalHours,
-      "Total Jam": row.totalHours
+      "Tugas Tambahan": row.additionalTask || '',
+      "Jam Tambahan": row.additionalHours || 0,
+      "Total Jam": row.totalHours || 0
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(excelData);
@@ -174,7 +174,7 @@ const TeacherTable: React.FC<TeacherTableProps> = ({ data, searchTerm, onAdd, on
   const calculateTotal = (data: Partial<TeacherData>) => {
     let sum = 0;
     ['hoursVII', 'hoursVIII', 'hoursIX'].forEach(key => {
-      const hours = data[key as keyof TeacherData] as ClassHours;
+      const hours = data[key as keyof TeacherData] as ClassHours | undefined;
       if (hours) {
         Object.values(hours).forEach(v => sum += Number(v) || 0);
       }
@@ -193,7 +193,8 @@ const TeacherTable: React.FC<TeacherTableProps> = ({ data, searchTerm, onAdd, on
 
   const handleHoursChange = (grade: 'hoursVII' | 'hoursVIII' | 'hoursIX', cls: string, value: string) => {
     setFormData(prev => {
-      const updatedHours = { ...prev[grade], [cls]: Number(value) };
+      const currentGradeHours = prev[grade] || { A: 0, B: 0, C: 0 };
+      const updatedHours = { ...currentGradeHours, [cls]: Number(value) };
       const updated = { ...prev, [grade]: updatedHours };
       return { ...updated, totalHours: calculateTotal(updated) };
     });

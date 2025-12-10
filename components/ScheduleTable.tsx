@@ -1,6 +1,5 @@
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Filter, Check, ChevronDown, X, AlertTriangle, MonitorCheck, Save, Download, FileText, FileSpreadsheet } from 'lucide-react';
+import { Filter, ChevronDown, AlertTriangle, MonitorCheck, Save, Download, FileText, FileSpreadsheet } from 'lucide-react';
 import { TeacherData, ClassHours } from '../types';
 import { SCHEDULE_DATA, CLASSES, COLOR_PALETTE } from '../constants';
 import jsPDF from 'jspdf';
@@ -62,7 +61,7 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
       const letter = parts[1] || '';
       
       const eligible = teacherData.filter((t: TeacherData) => {
-        let hoursObj: any; // Using any to bypass index access issues safely here
+        let hoursObj: ClassHours | undefined;
         if (grade === 'VII') hoursObj = t.hoursVII;
         else if (grade === 'VIII') hoursObj = t.hoursVIII;
         else if (grade === 'IX') hoursObj = t.hoursIX;
@@ -156,9 +155,9 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
     const [grade, letter] = fullClassName.split(' ');
     let targetHours = 0;
     
-    if (grade === 'VII') targetHours = teacher.hoursVII?.[letter as keyof ClassHours] || 0;
-    else if (grade === 'VIII') targetHours = teacher.hoursVIII?.[letter as keyof ClassHours] || 0;
-    else if (grade === 'IX') targetHours = teacher.hoursIX?.[letter as keyof ClassHours] || 0;
+    if (grade === 'VII') targetHours = teacher.hoursVII?.[letter] || 0;
+    else if (grade === 'VIII') targetHours = teacher.hoursVIII?.[letter] || 0;
+    else if (grade === 'IX') targetHours = teacher.hoursIX?.[letter] || 0;
 
     const used = teacherUsage[teacher.code]?.[fullClassName] || 0;
     const remaining = targetHours - used;
@@ -537,17 +536,6 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
                       // Filter handling
                       const isDimmed = selectedCodes.length > 0 && currentCode && !selectedCodes.includes(currentCode);
 
-                      // Pre-calculate teachers already in this class today (to prevent multi-subject per day)
-                      const teachersInThisClassToday = new Set<string>();
-                      activeSchedule.rows.forEach(r => {
-                          if (r.jam === row.jam || r.activity) return;
-                          const k = `${activeSchedule.day}-${r.jam}-${cls}`;
-                          const c = scheduleMap[k];
-                          if (c) teachersInThisClassToday.add(codeToTeacherMap[c]);
-                      });
-
-                      // Pre-calculate teacher gaps check? (Skipped for performance, manual entry allows visual check)
-
                       return (
                         <td key={cls} className="p-1 border-r border-gray-100 relative h-12 min-w-[120px]">
                            <div className={`w-full h-full relative rounded flex items-center justify-center ${colorClass} ${isDimmed ? 'opacity-20' : ''}`}>
@@ -585,21 +573,14 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                  const isHoliday = unavailableConstraints[item.code]?.includes(activeSchedule.day);
 
                                  // Multi-Subject in Same Class Constraint
-                                 // If this teacher is already teaching this class today with a DIFFERENT code, disable/warn
-                                 // We need to know if 'teachersInThisClassToday' has this teacher's NAME
-                                 // AND if the code used is different from 'item.code'
-                                 // Wait, teachersInThisClassToday stores Names. 
-                                 // If name exists, we must check if the existing code in the column matches item.code.
-                                 // Actually, we need to know the Code used by this teacher in this class.
-                                 // Let's refine:
-                                 let usedCodeByTeacherInThisClass = null;
+                                 let usedCodeByTeacherInThisClass: string | null = null;
                                  activeSchedule.rows.forEach(r => {
                                     const k = `${activeSchedule.day}-${r.jam}-${cls}`;
                                     const c = scheduleMap[k];
                                     if(c && codeToTeacherMap[c] === item.name) usedCodeByTeacherInThisClass = c;
                                  });
 
-                                 const isDifferentSubjectConflict = usedCodeByTeacherInThisClass && usedCodeByTeacherInThisClass !== item.code;
+                                 const isDifferentSubjectConflict = usedCodeByTeacherInThisClass !== null && usedCodeByTeacherInThisClass !== item.code;
 
                                  // HIDE if exhausted AND NOT selected (as requested: "jangan ditampilkan di dropdown")
                                  if (isExhausted && !isThisSelected) return null;
@@ -618,7 +599,7 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
                                    <option 
                                      key={item.code} 
                                      value={item.code} 
-                                     disabled={isDifferentSubjectConflict}
+                                     disabled={!!isDifferentSubjectConflict}
                                      style={{ backgroundColor: bgHex }}
                                    >
                                      {label} - {item.name}
