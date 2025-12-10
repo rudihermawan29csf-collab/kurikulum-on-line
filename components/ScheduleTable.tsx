@@ -1,8 +1,11 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Filter, Check, ChevronDown, X, AlertTriangle, MonitorCheck, Save } from 'lucide-react';
+import { Filter, Check, ChevronDown, X, AlertTriangle, MonitorCheck, Save, Download, FileText, FileSpreadsheet } from 'lucide-react';
 import { TeacherData, ClassHours } from '../types';
 import { SCHEDULE_DATA, CLASSES, COLOR_PALETTE } from '../constants';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 interface ScheduleTableProps {
   teacherData: TeacherData[];
@@ -26,11 +29,18 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
 
-  // Close filter when clicking outside
+  // Download Dropdown State
+  const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
+  const downloadMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
         setIsFilterOpen(false);
+      }
+      if (downloadMenuRef.current && !downloadMenuRef.current.contains(event.target as Node)) {
+        setIsDownloadMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -179,6 +189,98 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
     });
   };
 
+  // --- DOWNLOAD HANDLERS ---
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF('l', 'mm', 'a4');
+    doc.setFontSize(14);
+    doc.text('Master Jadwal Pelajaran - SMPN 3 Pacet', 14, 15);
+    doc.setFontSize(10);
+    doc.text('Semester Genap Tahun Ajaran 2025/2026', 14, 21);
+
+    let finalY = 25;
+
+    SCHEDULE_DATA.forEach(day => {
+        if (finalY > 250) {
+            doc.addPage();
+            finalY = 15;
+        }
+        
+        doc.setFontSize(12);
+        doc.setTextColor(79, 70, 229); // Indigo
+        doc.text(`HARI: ${day.day}`, 14, finalY + 5);
+        
+        const head = [['Jam', 'Waktu', ...CLASSES]];
+        const body = day.rows.map(row => {
+            if (row.activity) {
+                return [
+                    row.jam, 
+                    row.waktu, 
+                    { content: row.activity, colSpan: CLASSES.length, styles: { halign: 'center', fillColor: [255, 237, 213], textColor: [154, 52, 18] } }
+                ];
+            }
+            const cells = CLASSES.map(cls => {
+                const key = `${day.day}-${row.jam}-${cls}`;
+                return scheduleMap[key] || '';
+            });
+            return [row.jam, row.waktu, ...cells];
+        });
+
+        autoTable(doc, {
+            startY: finalY + 8,
+            head: head,
+            body: body as any,
+            theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 1, halign: 'center' },
+            headStyles: { fillColor: [55, 65, 81], textColor: 255 },
+            columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 22 } } // Fix time columns
+        });
+
+        finalY = (doc as any).lastAutoTable.finalY + 10;
+    });
+
+    doc.save('Master_Jadwal_Pelajaran.pdf');
+    setIsDownloadMenuOpen(false);
+  };
+
+  const handleDownloadExcel = () => {
+    const data: any[] = [];
+    
+    SCHEDULE_DATA.forEach(day => {
+        day.rows.forEach(row => {
+            const rowData: any = {
+                'Hari': day.day,
+                'Jam': row.jam,
+                'Waktu': row.waktu,
+            };
+
+            if (row.activity) {
+                rowData['Kegiatan'] = row.activity;
+                CLASSES.forEach(cls => rowData[cls] = row.activity); // Fill across for visibility
+            } else {
+                CLASSES.forEach(cls => {
+                    const key = `${day.day}-${row.jam}-${cls}`;
+                    rowData[cls] = scheduleMap[key] || '';
+                });
+            }
+            data.push(rowData);
+        });
+    });
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    
+    // Auto-width
+    const wscols = [
+        { wch: 10 }, { wch: 5 }, { wch: 15 }, // Hari, Jam, Waktu
+        ...CLASSES.map(() => ({ wch: 8 })) // Classes
+    ];
+    ws['!cols'] = wscols;
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Jadwal Master");
+    XLSX.writeFile(wb, "Master_Jadwal_Pelajaran.xlsx");
+    setIsDownloadMenuOpen(false);
+  };
+
   // Check for conflicts
   const conflicts = useMemo(() => {
     let crossClassCount = 0;
@@ -263,6 +365,35 @@ const ScheduleTable: React.FC<ScheduleTableProps> = ({
                  <Save size={16} />
                  <span className="hidden md:inline">Simpan Perubahan</span>
               </button>
+
+              {/* Download Dropdown */}
+              <div className="relative" ref={downloadMenuRef}>
+                 <button 
+                   onClick={() => setIsDownloadMenuOpen(!isDownloadMenuOpen)}
+                   className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border bg-white border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors shadow-sm mr-2"
+                 >
+                   <Download size={16} />
+                   <span className="hidden md:inline">Download</span>
+                   <ChevronDown size={14} className={`transition-transform ${isDownloadMenuOpen ? 'rotate-180' : ''}`} />
+                 </button>
+
+                 {isDownloadMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden animate-fade-in">
+                       <button 
+                         onClick={handleDownloadPDF}
+                         className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 text-left border-b border-gray-100"
+                       >
+                         <FileText size={16} className="text-red-500" /> Download PDF
+                       </button>
+                       <button 
+                         onClick={handleDownloadExcel}
+                         className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 text-left"
+                       >
+                         <FileSpreadsheet size={16} className="text-green-600" /> Download Excel
+                       </button>
+                    </div>
+                 )}
+              </div>
 
               {/* Filter Dropdown */}
               <div className="relative" ref={filterRef}>

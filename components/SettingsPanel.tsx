@@ -244,7 +244,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
       const wb = XLSX.read(bstr, { type: 'binary' });
       const wsname = wb.SheetNames[0];
       const ws = wb.Sheets[wsname];
-      const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
 
       // Assuming format: No, Kelas, Nama Siswa (Index 0, 1, 2)
       // Skip header row
