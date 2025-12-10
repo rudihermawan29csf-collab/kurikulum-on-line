@@ -3,12 +3,15 @@ import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
+  // process.cwd() diganti dengan '.' untuk menghindari error type Process yang tidak memiliki properti cwd
+  const env = loadEnv(mode, '.', '');
+  
   return {
     plugins: [react()],
-    base: './', // Ensures assets are loaded correctly on Netlify
+    base: './', 
     define: {
-      'process.env.API_KEY': JSON.stringify(env.API_KEY || process.env.API_KEY)
+      // Expose process.env.API_KEY to the client
+      'process.env.API_KEY': JSON.stringify(env.API_KEY)
     },
     build: {
       outDir: 'dist',

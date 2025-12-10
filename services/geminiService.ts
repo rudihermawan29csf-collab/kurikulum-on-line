@@ -15,12 +15,12 @@ export const askGemini = async (question: string, data?: TeacherData[]): Promise
   if (!data) return "Data tidak tersedia untuk analisis.";
 
   try {
-    // Guidelines require using process.env.API_KEY
+    // FIX: Menggunakan process.env.API_KEY sesuai panduan library @google/genai
     const apiKey = process.env.API_KEY;
     
     if (!apiKey) {
       console.warn("API_KEY is missing");
-      return "Kunci API tidak ditemukan. Pastikan konfigurasi environment benar.";
+      return "Kunci API tidak ditemukan. Pastikan konfigurasi environment (API_KEY) benar.";
     }
 
     const ai = new GoogleGenAI({ apiKey });
