@@ -47,14 +47,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, authSettings, teacherDat
         return;
       }
       const storedPass = authSettings.teacherPasswords[selectedName];
-      // If no password set, allow login without password or enforce a default?
-      // Assuming secure: must match stored. If not stored, maybe default to empty?
-      // Let's enforce: If no password set in settings, maybe use a default or empty.
-      // Rule: Password MUST match. If not set, it matches empty string.
-      if (password === (storedPass || '')) {
+      
+      // LOGIC DEFAULT PASSWORD GURU
+      // Jika storedPass ada isinya, gunakan itu.
+      // Jika tidak ada (undefined/kosong), gunakan 'guru123'.
+      const validPass = storedPass && storedPass.trim() !== '' ? storedPass : 'guru123';
+
+      if (password === validPass) {
          onLogin('TEACHER', selectedName);
       } else {
-         setError('Password salah!');
+         setError('Password salah! (Default: guru123)');
       }
     } 
     else if (activeModal === 'STUDENT') {
@@ -215,7 +217,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, authSettings, teacherDat
                   className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 outline-none transition-all ${
                     error ? 'border-red-500 ring-1 ring-red-200' : 'border-gray-300 focus:ring-indigo-500'
                   }`}
-                  placeholder="Masukkan password..."
+                  placeholder={activeModal === 'TEACHER' ? "Default: guru123" : "Masukkan password..."}
                   autoFocus
                 />
                 {error && <p className="text-red-500 text-xs mt-2 font-medium flex items-center gap-1 animate-shake">⚠️ {error}</p>}

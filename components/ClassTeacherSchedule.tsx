@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { TeacherData, UserRole, CalendarEvent, TeacherLeave, TeachingMaterial, TeachingJournal, Student, AppSettings } from '../types';
 import { SCHEDULE_DATA, CLASSES, COLOR_PALETTE } from '../constants';
-import { User, School, ClipboardList, BookOpen, Download, FileText, CheckCircle, Clock, Save, Info, PenTool, Plus, Trash2, ChevronDown, BarChart3, Edit2, X, FileSpreadsheet } from 'lucide-react';
+import { User, School, ClipboardList, BookOpen, Download, FileText, CheckCircle, Clock, Save, Info, PenTool, Plus, Trash2, ChevronDown, BarChart3, Edit2, X, FileSpreadsheet, Filter } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -84,16 +84,24 @@ const ClassTeacherSchedule: React.FC<ClassTeacherScheduleProps> = ({
   // --- JOURNAL STATE ---
   const [journalMode, setJournalMode] = useState<'INPUT_MATERI' | 'INPUT_JURNAL'>('INPUT_JURNAL');
   const [editingJournalId, setEditingJournalId] = useState<string | null>(null);
+  const [journalFilterClass, setJournalFilterClass] = useState<string>(''); // Filter state
   
   // Monitoring State
   const [monitoringClass, setMonitoringClass] = useState<string>(CLASSES[0]);
   const [isMonitoringDownloadOpen, setIsMonitoringDownloadOpen] = useState(false);
   const monitoringDownloadRef = useRef<HTMLDivElement>(null);
 
+  // Journal History Download State
+  const [isJournalDownloadOpen, setIsJournalDownloadOpen] = useState(false);
+  const journalDownloadRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
         if (monitoringDownloadRef.current && !monitoringDownloadRef.current.contains(event.target as Node)) {
             setIsMonitoringDownloadOpen(false);
+        }
+        if (journalDownloadRef.current && !journalDownloadRef.current.contains(event.target as Node)) {
+            setIsJournalDownloadOpen(false);
         }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -623,8 +631,15 @@ const ClassTeacherSchedule: React.FC<ClassTeacherScheduleProps> = ({
   };
 
   const myJournals = useMemo(() => {
-    return teachingJournals.filter(j => j.teacherName === currentUser).sort((a, b) => b.date.localeCompare(a.date));
-  }, [teachingJournals, currentUser]);
+    let journals = teachingJournals.filter(j => j.teacherName === currentUser);
+    
+    // Apply Class Filter
+    if (journalFilterClass) {
+       journals = journals.filter(j => j.className === journalFilterClass);
+    }
+
+    return journals.sort((a, b) => b.date.localeCompare(a.date));
+  }, [teachingJournals, currentUser, journalFilterClass]);
 
   const handleStudentAttendanceChange = (studentId: string, status: 'H' | 'S' | 'I' | 'A' | 'DL') => {
       setJourForm(prev => ({ ...prev, studentAttendance: { ...prev.studentAttendance, [studentId]: status } }));
@@ -658,6 +673,129 @@ const ClassTeacherSchedule: React.FC<ClassTeacherScheduleProps> = ({
           else current.push(sub);
           return { ...prev, subChapter: current.join(',') };
       });
+  };
+
+  // --- JOURNAL DOWNLOAD HANDLERS ---
+  const downloadJournalHistoryExcel = () => {
+      const excelData = myJournals.map((j, i) => {
+          const absList: string[] = [];
+          if(j.studentAttendance) {
+              Object.entries(j.studentAttendance).forEach(([sid, status]) => {
+                  if(status !== 'H') {
+                      const sName = students.find(s=>s.id===sid)?.name || 'Siswa';
+                      absList.push(`${status}: ${sName}`);
+                  }
+              });
+          }
+          const absString = absList.length > 0 ? absList.join(', ') : 'Nihil';
+
+          return {
+              'No': i + 1,
+              'Tanggal': j.date,
+              'Kelas': j.className,
+              'Jam Ke': j.jamKe ? j.jamKe.split(',').map(s=>s.split('|')[1]).join(',') : '-',
+              'Bab (Materi)': j.chapter,
+              'Sub Bab': j.subChapter,
+              'Kegiatan Pembelajaran': j.activity,
+              'Catatan': j.notes || '-',
+              'Absensi Siswa': absString
+          };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      
+      // Auto-width
+      const wscols = [
+          { wch: 5 }, { wch: 12 }, { wch: 8 }, { wch: 10 }, { wch: 20 }, { wch: 20 }, { wch: 30 }, { wch: 20 }, { wch: 30 }
+      ];
+      ws['!cols'] = wscols;
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Jurnal Mengajar");
+      XLSX.writeFile(wb, `Jurnal_Mengajar_${currentUser?.replace(' ', '_')}.xlsx`);
+      setIsJournalDownloadOpen(false);
+  };
+
+  const downloadJournalHistoryPDF = () => {
+      const doc = new jsPDF('l', 'mm', 'a4'); // Landscape for better fit
+      doc.setFontSize(14);
+      doc.text(`Jurnal Mengajar Guru`, 14, 15);
+      doc.setFontSize(10);
+      doc.text(`Guru: ${currentUser} - Semester Genap 2025/2026`, 14, 21);
+      doc.text(`SMPN 3 Pacet`, 14, 26);
+
+      const tableHead = [['No', 'Tanggal', 'Kelas', 'Jam', 'Bab', 'Sub Bab', 'Kegiatan', 'Catatan', 'Absensi']];
+      const tableBody = myJournals.map((j, i) => {
+          const absList: string[] = [];
+          if(j.studentAttendance) {
+              Object.entries(j.studentAttendance).forEach(([sid, status]) => {
+                  if(status !== 'H') {
+                      const sName = students.find(s=>s.id===sid)?.name || 'Siswa';
+                      absList.push(`${status}: ${sName}`);
+                  }
+              });
+          }
+          const absString = absList.length > 0 ? absList.join(', ') : 'Nihil';
+
+          return [
+              i + 1,
+              j.date,
+              j.className,
+              j.jamKe ? j.jamKe.split(',').map(s=>s.split('|')[1]).join(',') : '-',
+              j.chapter,
+              j.subChapter,
+              j.activity,
+              j.notes || '-',
+              absString
+          ];
+      });
+
+      autoTable(doc, {
+          startY: 32,
+          head: tableHead,
+          body: tableBody,
+          theme: 'grid',
+          styles: { fontSize: 8, cellPadding: 1 },
+          headStyles: { fillColor: [79, 70, 229] },
+          columnStyles: {
+             0: { cellWidth: 8, halign: 'center' },
+             1: { cellWidth: 22 },
+             2: { cellWidth: 12, halign: 'center' },
+             3: { cellWidth: 15, halign: 'center' },
+             6: { cellWidth: 50 }, // Kegiatan
+             7: { cellWidth: 30 }, // Catatan
+             8: { cellWidth: 40 }  // Absensi
+          }
+      });
+
+      // Add Signature Block
+      const pageHeight = doc.internal.pageSize.height;
+      const sigY = (doc as any).lastAutoTable.finalY + 20;
+      
+      // Check if enough space, else new page
+      if (sigY + 40 > pageHeight) doc.addPage();
+      
+      const finalSigY = sigY + 40 > pageHeight ? 20 : sigY;
+      
+      // Date
+      doc.setFontSize(10);
+      doc.text(`Mojokerto, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, 220, finalSigY); // Right align
+      
+      // Signatures
+      doc.text('Guru Mata Pelajaran', 20, finalSigY + 10);
+      doc.text('Kepala SMPN 3 Pacet', 220, finalSigY + 10);
+      
+      // Names
+      doc.text(currentUser || '.........................', 20, finalSigY + 35);
+      doc.text(appSettings?.headmaster || '.........................', 220, finalSigY + 35);
+      
+      // NIPs
+      const teacherNip = teacherData.find(t => t.name === currentUser)?.nip || '................';
+      doc.text(`NIP. ${teacherNip}`, 20, finalSigY + 40);
+      doc.text(`NIP. ${appSettings?.headmasterNip || '................'}`, 220, finalSigY + 40);
+
+      doc.save(`Jurnal_Mengajar_${currentUser?.replace(' ', '_')}.pdf`);
+      setIsJournalDownloadOpen(false);
   };
 
   // --- ATTENDANCE MONITORING ---
@@ -1045,6 +1183,49 @@ const ClassTeacherSchedule: React.FC<ClassTeacherScheduleProps> = ({
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                    <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                       <h3 className="font-bold text-gray-800">Riwayat Jurnal Mengajar</h3>
+                      
+                      <div className="flex items-center gap-2">
+                         {/* CLASS FILTER */}
+                         <div className="flex items-center gap-1 bg-white border border-gray-300 rounded-lg px-2 py-1.5 shadow-sm">
+                            <Filter size={14} className="text-gray-400"/>
+                            <select 
+                               value={journalFilterClass} 
+                               onChange={(e) => setJournalFilterClass(e.target.value)}
+                               className="text-xs font-bold text-gray-700 border-none outline-none bg-transparent"
+                            >
+                               <option value="">Semua Kelas</option>
+                               {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                         </div>
+
+                         {/* DOWNLOAD BUTTON FOR JOURNAL HISTORY */}
+                         <div className="relative" ref={journalDownloadRef}>
+                           <button 
+                              onClick={() => setIsJournalDownloadOpen(!isJournalDownloadOpen)}
+                              className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-bold shadow-sm hover:bg-gray-50"
+                           >
+                              <Download size={16} /> <span className="hidden sm:inline">Download</span>
+                              <ChevronDown size={14} className={`transition-transform ${isJournalDownloadOpen ? 'rotate-180' : ''}`} />
+                           </button>
+                           {isJournalDownloadOpen && (
+                              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 shadow-xl rounded-lg overflow-hidden z-20 animate-fade-in">
+                                 <button 
+                                   onClick={downloadJournalHistoryPDF}
+                                   className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex items-center gap-2 text-gray-700 border-b border-gray-100"
+                                 >
+                                    <FileText size={16} className="text-red-500"/> PDF
+                                 </button>
+                                 <button 
+                                   onClick={downloadJournalHistoryExcel}
+                                   className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex items-center gap-2 text-gray-700"
+                                 >
+                                    <FileSpreadsheet size={16} className="text-green-600"/> Excel
+                                 </button>
+                              </div>
+                           )}
+                         </div>
+                      </div>
+
                    </div>
                    <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-200 text-xs">
