@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import TeacherTable from './components/TeacherTable';
 import ScheduleTable from './components/ScheduleTable';
@@ -7,7 +6,7 @@ import ClassTeacherSchedule from './components/ClassTeacherSchedule';
 import LoginPage from './components/LoginPage';
 import SettingsPanel from './components/SettingsPanel';
 import { ViewMode, TeacherData, UserRole, AppSettings, AuthSettings, CalendarEvent, TeacherLeave, TeachingMaterial, TeachingJournal, Student } from './types';
-import { TEACHER_DATA as INITIAL_DATA } from './constants';
+import { TEACHER_DATA as INITIAL_DATA, INITIAL_STUDENTS } from './constants';
 import { Table as TableIcon, Search, Calendar, Ban, CalendarClock, Settings, Menu, LogOut, ChevronDown } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -109,9 +108,9 @@ const App: React.FC = () => {
   const [students, setStudents] = useState<Student[]>(() => {
     try {
       const saved = localStorage.getItem('students');
-      return saved ? JSON.parse(saved) : [];
+      return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
     } catch {
-      return [];
+      return INITIAL_STUDENTS;
     }
   });
 
