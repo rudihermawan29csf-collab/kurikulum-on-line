@@ -85,6 +85,8 @@ const ClassTeacherSchedule: React.FC<ClassTeacherScheduleProps> = ({
   const [journalMode, setJournalMode] = useState<'INPUT_MATERI' | 'INPUT_JURNAL'>('INPUT_JURNAL');
   const [editingJournalId, setEditingJournalId] = useState<string | null>(null);
   const [journalFilterClass, setJournalFilterClass] = useState<string>(''); // Filter state
+  const [journalDateFrom, setJournalDateFrom] = useState<string>('');
+  const [journalDateTo, setJournalDateTo] = useState<string>('');
   
   // Monitoring State
   const [monitoringClass, setMonitoringClass] = useState<string>(CLASSES[0]);
@@ -637,9 +639,17 @@ const ClassTeacherSchedule: React.FC<ClassTeacherScheduleProps> = ({
     if (journalFilterClass) {
        journals = journals.filter(j => j.className === journalFilterClass);
     }
+    
+    // Apply Date Filter
+    if (journalDateFrom) {
+       journals = journals.filter(j => j.date >= journalDateFrom);
+    }
+    if (journalDateTo) {
+       journals = journals.filter(j => j.date <= journalDateTo);
+    }
 
     return journals.sort((a, b) => b.date.localeCompare(a.date));
-  }, [teachingJournals, currentUser, journalFilterClass]);
+  }, [teachingJournals, currentUser, journalFilterClass, journalDateFrom, journalDateTo]);
 
   const handleStudentAttendanceChange = (studentId: string, status: 'H' | 'S' | 'I' | 'A' | 'DL') => {
       setJourForm(prev => ({ ...prev, studentAttendance: { ...prev.studentAttendance, [studentId]: status } }));
@@ -1184,7 +1194,7 @@ const ClassTeacherSchedule: React.FC<ClassTeacherScheduleProps> = ({
                    <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                       <h3 className="font-bold text-gray-800">Riwayat Jurnal Mengajar</h3>
                       
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                          {/* CLASS FILTER */}
                          <div className="flex items-center gap-1 bg-white border border-gray-300 rounded-lg px-2 py-1.5 shadow-sm">
                             <Filter size={14} className="text-gray-400"/>
@@ -1196,6 +1206,26 @@ const ClassTeacherSchedule: React.FC<ClassTeacherScheduleProps> = ({
                                <option value="">Semua Kelas</option>
                                {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
+                         </div>
+
+                         {/* DATE RANGE FILTER */}
+                         <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-2 py-1.5 shadow-sm">
+                            <span className="text-[10px] text-gray-500 font-bold">Dari:</span>
+                            <input 
+                              type="date" 
+                              value={journalDateFrom} 
+                              onChange={(e) => setJournalDateFrom(e.target.value)}
+                              className="text-xs font-bold text-gray-700 border-none outline-none bg-transparent w-24"
+                            />
+                         </div>
+                         <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-2 py-1.5 shadow-sm">
+                            <span className="text-[10px] text-gray-500 font-bold">Sampai:</span>
+                            <input 
+                              type="date" 
+                              value={journalDateTo} 
+                              onChange={(e) => setJournalDateTo(e.target.value)}
+                              className="text-xs font-bold text-gray-700 border-none outline-none bg-transparent w-24"
+                            />
                          </div>
 
                          {/* DOWNLOAD BUTTON FOR JOURNAL HISTORY */}
