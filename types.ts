@@ -68,6 +68,7 @@ export interface TeacherLeave {
 export interface TeachingMaterial {
   id: string;
   teacherName: string; // Linked to logged in teacher
+  subject?: string; // Mata Pelajaran
   semester: '1' | '2';
   classes: string[]; // List of classes, e.g. ['VII A', 'VII B']
   chapter: string; // Bab
@@ -77,6 +78,7 @@ export interface TeachingMaterial {
 export interface TeachingJournal {
   id: string;
   teacherName: string;
+  subject?: string; // Added: Mata Pelajaran for Journal
   date: string;
   semester: '1' | '2';
   jamKe: string; // e.g. "1", "2" or "1-2"

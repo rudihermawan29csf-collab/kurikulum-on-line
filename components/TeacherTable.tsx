@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { TeacherData, ClassHours } from '../types';
+import { TeacherData, ClassHours, AppSettings } from '../types';
 import { Download, Plus, Edit2, Trash2, X, Save, FileSpreadsheet, FileText, ChevronDown } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -11,11 +11,12 @@ interface TeacherTableProps {
   onAdd: (teacher: TeacherData) => void;
   onEdit: (teacher: TeacherData) => void;
   onDelete: (id: number) => void;
+  appSettings: AppSettings;
 }
 
 const EmptyClassHours: ClassHours = { A: 0, B: 0, C: 0 };
 
-const TeacherTable: React.FC<TeacherTableProps> = ({ data, searchTerm, onAdd, onEdit, onDelete }) => {
+const TeacherTable: React.FC<TeacherTableProps> = ({ data, searchTerm, onAdd, onEdit, onDelete, appSettings }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<TeacherData | null>(null);
   
@@ -57,10 +58,10 @@ const TeacherTable: React.FC<TeacherTableProps> = ({ data, searchTerm, onAdd, on
     doc.setFontSize(16);
     doc.text('Sistem Pembagian Tugas - SMPN 3 Pacet', 14, 15);
     doc.setFontSize(10);
-    doc.text('Semester Genap Tahun Ajaran 2025/2026', 14, 21);
+    doc.text(`Semester ${appSettings.semester} Tahun Ajaran ${appSettings.academicYear}`, 14, 21);
 
     const tableColumn = [
-      "No", "Nama Guru", "Mapel", "Kode", 
+      "No", "Nama Guru", "Pangkat/Gol", "Mata Pelajaran", "Kode", 
       "VII A", "VII B", "VII C", 
       "VIII A", "VIII B", "VIII C", 
       "IX A", "IX B", "IX C", 
@@ -70,6 +71,7 @@ const TeacherTable: React.FC<TeacherTableProps> = ({ data, searchTerm, onAdd, on
     const tableRows = filteredData.map(row => [
       row.no || '',
       row.name || '',
+      `${row.rank || '-'} / ${row.gol || '-'}`,
       row.subject || '',
       row.code || '',
       row.hoursVII?.A ?? '', row.hoursVII?.B ?? '', row.hoursVII?.C ?? '',
@@ -89,15 +91,45 @@ const TeacherTable: React.FC<TeacherTableProps> = ({ data, searchTerm, onAdd, on
       headStyles: { fillColor: [30, 41, 59] }, // Slate-800
       columnStyles: {
         0: { cellWidth: 8 }, // No
-        1: { cellWidth: 40 }, // Nama
-        2: { cellWidth: 25 }, // Mapel
-        3: { cellWidth: 15 }, // Kode
+        1: { cellWidth: 35 }, // Nama
+        2: { cellWidth: 20 }, // Pangkat
+        3: { cellWidth: 20 }, // Mapel
+        4: { cellWidth: 12 }, // Kode
         // Classes are auto
-        13: { cellWidth: 30 }, // Tugas Tambahan
-        14: { cellWidth: 10 },
-        15: { cellWidth: 10 }
+        14: { cellWidth: 25 }, // Tugas Tambahan
+        15: { cellWidth: 8 },
+        16: { cellWidth: 8 }
       }
     });
+
+    // --- Signature Block ---
+    const pageHeight = doc.internal.pageSize.height;
+    const pageWidth = doc.internal.pageSize.width;
+    let finalY = (doc as any).lastAutoTable.finalY + 10;
+
+    // Check if enough space for signature (need approx 40mm)
+    if (finalY + 40 > pageHeight) {
+        doc.addPage();
+        finalY = 20;
+    }
+
+    const rightMargin = pageWidth - 60; 
+    const dateStr = appSettings.lastUpdated || new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    doc.setFontSize(10);
+    // Location and Date
+    doc.text(`Mojokerto, ${dateStr}`, rightMargin, finalY, { align: 'center' });
+    
+    // Title
+    doc.text('Kepala SMPN 3 Pacet', rightMargin, finalY + 5, { align: 'center' });
+    
+    // Space for signature
+    
+    // Name
+    doc.text(appSettings.headmaster || '.........................', rightMargin, finalY + 30, { align: 'center' });
+    
+    // NIP
+    doc.text(`NIP. ${appSettings.headmasterNip || '................'}`, rightMargin, finalY + 35, { align: 'center' });
 
     doc.save('Pembagian_Tugas_Guru_SMPN3Pacet.pdf');
     setIsDownloadMenuOpen(false);
@@ -109,7 +141,8 @@ const TeacherTable: React.FC<TeacherTableProps> = ({ data, searchTerm, onAdd, on
       "No": row.no || '',
       "Nama Guru": row.name || '',
       "NIP": row.nip || '',
-      "Pangkat/Gol": `${row.rank || ''} ${row.gol || ''}`.trim(),
+      "Pangkat": row.rank || '',
+      "Golongan": row.gol || '',
       "Mata Pelajaran": row.subject || '',
       "Kode Mapel": row.code || '',
       "VII A": row.hoursVII?.A || 0,
@@ -137,6 +170,7 @@ const TeacherTable: React.FC<TeacherTableProps> = ({ data, searchTerm, onAdd, on
       { wch: max_width }, // Nama
       { wch: 20 }, // NIP
       { wch: 15 }, // Pangkat
+      { wch: 8 }, // Gol
       { wch: 20 }, // Mapel
       { wch: 10 }, // Kode
       // Classes
@@ -264,12 +298,15 @@ const TeacherTable: React.FC<TeacherTableProps> = ({ data, searchTerm, onAdd, on
             <table className="min-w-full divide-y divide-gray-200 table-fixed">
               <thead className="bg-slate-800 text-white">
                 <tr>
-                  <th rowSpan={2} className="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider w-10 border-r border-slate-600">No</th>
-                  <th rowSpan={2} className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider w-56 border-r border-slate-600">
-                    Nama Guru <br/> <span className="text-gray-400 font-normal">NIP / Pangkat / Gol</span>
+                  <th rowSpan={2} className="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider w-10 border-r border-slate-600">No</th>
+                  <th rowSpan={2} className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider w-48 border-r border-slate-600">
+                    Nama Guru <br/> <span className="text-gray-400 font-normal">NIP</span>
+                  </th>
+                  <th rowSpan={2} className="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider w-24 border-r border-slate-600">
+                    Pangkat/Gol
                   </th>
                   <th rowSpan={2} className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider w-32 border-r border-slate-600">Mata Pelajaran</th>
-                  <th rowSpan={2} className="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider w-20 border-r border-slate-600">Kode</th>
+                  <th rowSpan={2} className="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider w-16 border-r border-slate-600">Kode</th>
                   
                   {/* Class Headers */}
                   <th colSpan={3} className="px-1 py-1 text-center text-xs font-bold uppercase border-b border-r border-slate-600 bg-slate-700">VII</th>
@@ -279,7 +316,7 @@ const TeacherTable: React.FC<TeacherTableProps> = ({ data, searchTerm, onAdd, on
                   <th rowSpan={2} className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider w-40 border-r border-slate-600">Tugas Tambahan</th>
                   <th rowSpan={2} className="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider w-12 border-r border-slate-600">Jam<br/>Tb</th>
                   <th rowSpan={2} className="px-2 py-3 text-center text-xs font-bold uppercase tracking-wider w-12 border-r border-slate-600">Total</th>
-                  <th rowSpan={2} className="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider w-24">Aksi</th>
+                  <th rowSpan={2} className="px-3 py-3 text-center text-xs font-bold uppercase tracking-wider w-20">Aksi</th>
                 </tr>
                 <tr>
                   {['A','B','C'].map(c => <th key={`7${c}`} className="px-1 py-1 text-center text-[10px] font-semibold bg-slate-700 border-r border-slate-600 w-8">{c}</th>)}
@@ -293,10 +330,16 @@ const TeacherTable: React.FC<TeacherTableProps> = ({ data, searchTerm, onAdd, on
                     <td className="px-2 py-4 text-center text-sm text-gray-500 border-r border-gray-200">{row.no}</td>
                     <td className="px-3 py-4 text-left border-r border-gray-200">
                       <div className="text-sm font-semibold text-gray-900">{row.name}</div>
-                      {row.nip && row.nip !== '-' && <div className="text-xs text-gray-500">{row.nip}</div>}
-                      {row.rank && row.rank !== '-' && <div className="text-xs text-indigo-600 mt-1 inline-block bg-indigo-50 px-1.5 rounded">{row.rank} {row.gol}</div>}
+                      {row.nip && row.nip !== '-' && <div className="text-xs text-gray-500 mt-0.5">{row.nip}</div>}
                     </td>
-                    <td className="px-3 py-4 text-xs text-gray-700 border-r border-gray-200">{row.subject}</td>
+                    <td className="px-2 py-4 text-center text-xs text-gray-700 border-r border-gray-200">
+                       {(row.rank && row.rank !== '-') || (row.gol && row.gol !== '-') ? (
+                          <div className="inline-block bg-gray-100 px-2 py-1 rounded text-gray-600 font-medium">
+                             {row.rank}<br/>{row.gol}
+                          </div>
+                       ) : '-'}
+                    </td>
+                    <td className="px-3 py-4 text-xs text-gray-700 border-r border-gray-200 font-medium">{row.subject}</td>
                     <td className="px-2 py-4 text-center text-xs font-mono text-gray-500 border-r border-gray-200">{row.code}</td>
 
                     {renderCell(row.hoursVII?.A)}

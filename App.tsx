@@ -23,8 +23,8 @@ const App: React.FC = () => {
         semester: 'Genap',
         lastUpdated: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
         logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_Tut_Wuri_Handayani.png/800px-Logo_Tut_Wuri_Handayani.png',
-        headmaster: '',
-        headmasterNip: ''
+        headmaster: 'Didik Sulistyo, M.M.Pd',
+        headmasterNip: '196605181989011002'
       };
     } catch {
       return {
@@ -32,8 +32,8 @@ const App: React.FC = () => {
         semester: 'Genap',
         lastUpdated: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
         logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_Tut_Wuri_Handayani.png/800px-Logo_Tut_Wuri_Handayani.png',
-        headmaster: '',
-        headmasterNip: ''
+        headmaster: 'Didik Sulistyo, M.M.Pd',
+        headmasterNip: '196605181989011002'
       };
     }
   });
@@ -462,6 +462,7 @@ const App: React.FC = () => {
               onAdd={handleAddTeacher}
               onEdit={handleEditTeacher}
               onDelete={handleDeleteTeacher}
+              appSettings={appSettings}
             />
           )}
           {viewMode === ViewMode.SCHEDULE && userRole === 'ADMIN' && (
