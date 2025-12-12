@@ -5,7 +5,7 @@ import GeminiAssistant from './components/GeminiAssistant';
 import ClassTeacherSchedule from './components/ClassTeacherSchedule';
 import LoginPage from './components/LoginPage';
 import SettingsPanel from './components/SettingsPanel';
-import { ViewMode, TeacherData, UserRole, AppSettings, AuthSettings, CalendarEvent, TeacherLeave, TeachingMaterial, TeachingJournal, Student } from './types';
+import { ViewMode, TeacherData, UserRole, AppSettings, AuthSettings, CalendarEvent, TeacherLeave, TeachingMaterial, TeachingJournal, Student, GradeRecord } from './types';
 import { TEACHER_DATA as INITIAL_DATA, INITIAL_STUDENTS } from './constants';
 import { Table as TableIcon, Search, Calendar, Ban, CalendarClock, Settings, Menu, LogOut, ChevronDown } from 'lucide-react';
 
@@ -133,6 +133,15 @@ const App: React.FC = () => {
     }
   });
 
+  const [studentGrades, setStudentGrades] = useState<GradeRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem('studentGrades');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   // --- UI STATES ---
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -177,6 +186,10 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('teachingJournals', JSON.stringify(teachingJournals));
   }, [teachingJournals]);
+
+  useEffect(() => {
+    localStorage.setItem('studentGrades', JSON.stringify(studentGrades));
+  }, [studentGrades]);
 
 
   // Close menu on click outside
@@ -303,6 +316,20 @@ const App: React.FC = () => {
 
   const handleDeleteJournal = (id: string) => {
     setTeachingJournals(prev => prev.filter(j => j.id !== id));
+  };
+
+  // --- Grade Handlers ---
+  const handleUpdateGrade = (grade: GradeRecord) => {
+    setStudentGrades(prev => {
+      const idx = prev.findIndex(g => g.id === grade.id);
+      if (idx >= 0) {
+        const newGrades = [...prev];
+        newGrades[idx] = grade;
+        return newGrades;
+      } else {
+        return [...prev, grade];
+      }
+    });
   };
 
   // --- RENDER LOGIN ---
@@ -493,6 +520,9 @@ const App: React.FC = () => {
                onAddJournal={handleAddJournal}
                onEditJournal={handleEditJournal}
                onDeleteJournal={handleDeleteJournal}
+               // Grades Props
+               studentGrades={studentGrades}
+               onUpdateGrade={handleUpdateGrade}
              />
           )}
           {viewMode === ViewMode.SETTINGS && userRole === 'ADMIN' && (

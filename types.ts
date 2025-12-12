@@ -97,6 +97,37 @@ export interface Student {
   className: string; // e.g., "VII A"
 }
 
+// --- NEW GRADES INTERFACES ---
+export interface ChapterGrade {
+  f1?: number;
+  f2?: number;
+  f3?: number;
+  f4?: number;
+  f5?: number;
+  sum?: number;
+  avg?: number; // RR BAB
+}
+
+export interface GradeRecord {
+  id: string; // composite: studentId_subject_semester
+  studentId: string;
+  teacherName: string;
+  subject: string;
+  className: string;
+  semester: string;
+  academicYear: string;
+  chapters: {
+    1: ChapterGrade;
+    2: ChapterGrade;
+    3: ChapterGrade;
+    4: ChapterGrade;
+    5: ChapterGrade;
+  };
+  sts?: number;
+  sas?: number;
+  finalGrade?: number;
+}
+
 export interface SettingsPanelProps {
   settings: AppSettings;
   onSave: (settings: AppSettings) => void;
